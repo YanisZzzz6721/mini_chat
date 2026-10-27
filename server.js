@@ -86,16 +86,6 @@ async function chat(req, res) {
   b.minute.push(Date.now()); b.jour.push(Date.now());
   actifs++;
 
-  const args = ['-p', message,
-    '--tools', '',
-    '--setting-sources', '',
-    '--disable-slash-commands',
-    '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
-    '--system-prompt', systemPrompt()];
-  if (MODEL) args.push('--model', MODEL);
-  if (sessions.has(body.sessionId)) args.push('--resume', body.sessionId);
-  else args.push('--session-id', body.sessionId);
-
   res.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
     'Cache-Control': 'no-cache, no-transform',
@@ -103,29 +93,50 @@ async function chat(req, res) {
   });
   const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
 
-  const child = spawn(CLAUDE_BIN, args, { cwd: SANDBOX, stdio: ['ignore', 'pipe', 'pipe'] });
-  let buf = '', fin = false, stderr = '';
+  let child, fin = false;
   const done = () => { if (!fin) { fin = true; actifs--; } };
+  res.on('close', () => { if (!fin && child) child.kill('SIGTERM'); });
 
-  child.stdout.on('data', (d) => {
-    buf += d;
-    let i;
-    while ((i = buf.indexOf('\n')) >= 0) {
-      const line = buf.slice(0, i); buf = buf.slice(i + 1);
-      let ev; try { ev = JSON.parse(line); } catch { continue; }
-      const delta = ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta' && ev.event.delta.text;
-      if (delta) send({ t: 'delta', text: delta });
-    }
-  });
-  child.stderr.on('data', (d) => { stderr += d; });
-  child.on('close', (code) => {
-    done();
-    if (code === 0) { sessions.add(body.sessionId); saveSessions(); send({ t: 'done' }); }
-    else { console.error('claude a échoué', code, stderr.slice(0, 500)); send({ t: 'error', message: 'Erreur côté serveur, réessaie.' }); }
-    res.end();
-  });
-  child.on('error', () => { done(); send({ t: 'error', message: 'claude introuvable sur le serveur.' }); res.end(); });
-  res.on('close', () => { if (!fin) child.kill('SIGTERM'); });
+  // resume=true : reprend une conversation existante ; false : en crée une avec cet identifiant.
+  // Si l'état connu est faux (ex. le serveur a redémarré), on retente une fois dans l'autre mode.
+  function run(resume, canRetry) {
+    const args = ['-p', message,
+      '--tools', '',
+      '--setting-sources', '',
+      '--disable-slash-commands',
+      '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
+      '--system-prompt', systemPrompt()];
+    if (MODEL) args.push('--model', MODEL);
+    args.push(resume ? '--resume' : '--session-id', body.sessionId);
+
+    child = spawn(CLAUDE_BIN, args, { cwd: SANDBOX, stdio: ['ignore', 'pipe', 'pipe'] });
+    let buf = '', stderr = '', sent = false;
+
+    child.stdout.on('data', (d) => {
+      buf += d;
+      let i;
+      while ((i = buf.indexOf('\n')) >= 0) {
+        const line = buf.slice(0, i); buf = buf.slice(i + 1);
+        let ev; try { ev = JSON.parse(line); } catch { continue; }
+        const delta = ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta' && ev.event.delta.text;
+        if (delta) { sent = true; send({ t: 'delta', text: delta }); }
+      }
+    });
+    child.stderr.on('data', (d) => { stderr += d; });
+    child.on('close', (code) => {
+      if (code === 0) { done(); sessions.add(body.sessionId); saveSessions(); send({ t: 'done' }); return res.end(); }
+      if (canRetry && !sent && !res.destroyed) {
+        if (!resume && /already in use/i.test(stderr)) { sessions.add(body.sessionId); saveSessions(); return run(true, false); }
+        if (resume && /no conversation|not found/i.test(stderr)) { sessions.delete(body.sessionId); saveSessions(); return run(false, false); }
+      }
+      done();
+      console.error('claude a échoué', code, stderr.slice(0, 500));
+      send({ t: 'error', message: 'Erreur côté serveur, réessaie.' });
+      res.end();
+    });
+    child.on('error', () => { done(); send({ t: 'error', message: 'claude introuvable sur le serveur.' }); res.end(); });
+  }
+  run(sessions.has(body.sessionId), true);
 }
 
 const TYPES = { '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
