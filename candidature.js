@@ -342,6 +342,42 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
     }
   };
 
+  // ---------- coach : chat qui connaît le profil et la candidature en cours ----------
+  h['POST /api/coach'] = async (req, res) => {
+    const b = gate(req, res);
+    if (!b) return;
+    let body;
+    try { body = await readBody(req, 30000); } catch { return refus(res, 'Message trop long.'); }
+    const id = idDe(body.id);
+    const p = ID.test(id) ? charger(id) : null;
+    if (!p) return refus(res, 'Profil introuvable : crée d’abord ton profil.');
+    const message = typeof body.message === 'string' ? body.message.trim() : '';
+    if (!message || message.length > 8000) return refus(res, 'Message vide ou trop long (8000 caractères max).');
+    const cid = String(body.cid || '');
+    const c = CID.test(cid) ? lireCand(id, cid) : null;
+    const contexte = c
+      ? `Poste : ${c.meta.poste || '?'} chez ${c.meta.entreprise || '?'} (statut : ${c.meta.statut || 'brouillon'}).\nANNONCE :\n${c.offre}\n\nLETTRE PRÉPARÉE :\n${c.lettre}`
+      : '(aucune candidature sélectionnée : réponds de façon générale à partir du profil)';
+    const histo = (Array.isArray(body.history) ? body.history : []).slice(-10)
+      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.text === 'string')
+      .map((m) => `${m.role === 'user' ? 'CANDIDAT' : 'COACH'} : ${m.text.slice(0, 2000)}`).join('\n\n');
+    const system = prompt('prompt-coach.md')
+      .replace('{{PROFIL}}', () => p.md)
+      .replace('{{REGLES_PROFIL}}', () => p.regles.trim() || '(aucune)')
+      .replace('{{PREFERENCES}}', () => p.apprises.trim() || '(aucune)')
+      .replace('{{CONTEXTE}}', () => contexte);
+    acquire(b);
+    const send = flux(res);
+    try {
+      const r = await appel({ message: (histo ? `CONVERSATION JUSQU'ICI :\n${histo}\n\n` : '') + `NOUVEAU MESSAGE DU CANDIDAT :\n${message}`, system, onDelta: (t) => send({ t: 'delta', text: t }), res });
+      if (r.ok) send({ t: 'done' });
+      else { console.error('coach a échoué', r.stderr.slice(0, 500)); send({ t: 'error', message: 'Erreur côté serveur, réessaie.' }); }
+    } finally {
+      release();
+      res.end();
+    }
+  };
+
   // ---------- retouche (+ mémoire des préférences) ----------
   h['POST /api/retouche'] = async (req, res) => {
     const b = gate(req, res);

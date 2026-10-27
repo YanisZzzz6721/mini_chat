@@ -6,157 +6,184 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Postuler">
-<meta name="theme-color" content="#0b0d12">
+<meta name="theme-color" content="#000000">
 <meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-512.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Source+Serif+4:wght@400;600&display=swap" rel="stylesheet">
 <title>Postuler</title>
 <style>
   :root {
-    --bg:#0b0d12; --surface:#141821; --surface2:#1b2030; --line:rgba(255,255,255,.07);
-    --txt:#eef0f6; --mut:#8f97aa; --acc1:#6c8cff; --acc2:#9b6bff; --ok:#5ad19a; --warn:#ffb36b; --bad:#ff7b8a;
-    --grad:linear-gradient(135deg,var(--acc1),var(--acc2));
+    --bg:#000; --panel:#0A0A0A; --line:#2E2E2E; --txt:#EDEDED; --mut:#A1A1A1; --faint:#707070;
+    --night:#0B1B45; --night-hi:#10265F; --night-line:#23418F; --night-txt:#D6EBFF;
+    --dia:#5CCBFF; --dia-ink:#03122E;
+    --green:#3DD68C; --amber:#FFB224; --red:#FF6166; --blue:#3291FF;
     --top:env(safe-area-inset-top); --bot:env(safe-area-inset-bottom);
+    --sans:'Geist',-apple-system,system-ui,sans-serif; --mono:'Geist Mono',ui-monospace,monospace; --serif:'Source Serif 4',Georgia,serif;
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-  html,body { height:100%; margin:0; background:var(--bg); color:var(--txt); overscroll-behavior:none;
-    font:16px/1.45 -apple-system,system-ui,"SF Pro Text",sans-serif; -webkit-font-smoothing:antialiased; }
+  html,body { height:100%; margin:0; background:var(--bg); color:var(--txt); overscroll-behavior:none; font:16px/1.45 var(--sans); -webkit-font-smoothing:antialiased; }
   button,input,textarea,select { font:inherit; color:inherit; touch-action:manipulation; }
-  button { border:0; cursor:pointer; }
+  button { cursor:pointer; border:0; background:none; }
   [hidden] { display:none !important; }
+  h1,h2,h3,p { margin:0; }
+  .mono { font-family:var(--mono); }
 
   /* ---- squelette ---- */
   #main { position:fixed; inset:0; display:none; flex-direction:column; }
   #views { flex:1; min-height:0; position:relative; }
-  .view { position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
-    padding:calc(var(--top) + 14px) 16px 24px; }
-  .view > h1 { font-size:28px; letter-spacing:-.02em; margin:6px 2px 14px; }
-  .sub { color:var(--mut); font-size:14px; margin:-8px 2px 14px; }
+  .view { position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain; padding:calc(var(--top) + 14px) 16px 28px; }
+  .head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:20px; }
+  .head h1 { font-size:28px; line-height:1.1; font-weight:600; letter-spacing:-.04em; }
+  .sub { color:var(--mut); font-size:14px; margin-top:6px; }
+  .lbl { font-size:13px; font-weight:500; color:var(--mut); margin:0 0 8px; display:flex; align-items:center; justify-content:space-between; }
+  .sec { margin-bottom:20px; }
 
   /* ---- barre du bas ---- */
-  #nav { display:flex; padding:6px 8px calc(6px + var(--bot)); background:rgba(11,13,18,.82); border-top:1px solid var(--line);
-    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
-  #nav button { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 0; background:none; color:var(--mut); font-size:11px; font-weight:500; border-radius:14px; }
-  #nav button svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-  #nav button.on { color:#fff; }
-  #nav button.on svg { stroke:url(#g); }
-  #nav button.on span { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  #nav { flex:none; height:calc(64px + var(--bot)); border-top:1px solid var(--line); background:var(--bg); display:flex; padding:0 8px var(--bot); }
+  #nav button { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; color:var(--mut); font-size:12px; font-weight:500; }
+  #nav button svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+  #nav button.on { color:var(--txt); box-shadow:inset 0 2px 0 var(--dia); }
 
-  /* ---- cartes, champs, boutons ---- */
-  .card { background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:16px; margin-bottom:12px; }
-  .card h2 { font-size:17px; margin:0 0 4px; letter-spacing:-.01em; }
-  .card p,.mut { color:var(--mut); font-size:14px; margin:4px 0 0; }
-  label.l { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; font-weight:500; }
-  .in { width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:14px; background:var(--surface2); color:var(--txt); font-size:16px; outline:none; }
-  .in:focus { border-color:var(--acc1); }
-  textarea.in { resize:none; line-height:1.5; display:block; }
-  .btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; padding:0 18px; border-radius:16px; background:var(--grad); color:#fff; font-weight:600; font-size:16px;
-    box-shadow:0 8px 24px -10px rgba(108,140,255,.7); transition:transform .12s, opacity .2s; }
-  .btn:active { transform:scale(.98); }
-  .btn:disabled { opacity:.45; box-shadow:none; }
-  .btn.sec { background:var(--surface2); box-shadow:none; color:var(--txt); border:1px solid var(--line); }
-  .btn.small { min-height:44px; width:auto; font-size:15px; border-radius:14px; padding:0 16px; }
-  .row { display:flex; gap:10px; }
-  .err { color:var(--bad); font-size:14px; margin-top:10px; min-height:1em; }
-  .okm { color:var(--ok); font-size:14px; margin-top:10px; }
-  .pill { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:20px; background:var(--surface2); font-size:13px; color:var(--mut); }
-  .pill.ok { color:var(--ok); } .pill.warn { color:var(--warn); }
-  .chips { display:flex; gap:8px; overflow-x:auto; padding:2px 0; scrollbar-width:none; }
-  .chips::-webkit-scrollbar { display:none; }
-  .chip { flex:none; padding:8px 14px; border-radius:20px; background:var(--surface2); border:1px solid var(--line); font-size:14px; color:var(--txt); }
-  .tag { display:inline-block; padding:3px 10px; margin:3px 5px 0 0; border-radius:12px; font-size:13px; background:var(--surface2); }
-  .tag.yes { color:#9be3b4; } .tag.no { color:#ffb4b4; }
+  /* ---- boutons : primaire = bleu diamant, secondaire = bleu nuit ---- */
+  .btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:48px; padding:0 16px; border-radius:6px; background:var(--dia); color:var(--dia-ink); font-size:15px; font-weight:500; transition:filter .15s, transform .1s; }
+  .btn:active { transform:scale(.985); filter:brightness(.92); }
+  .btn.sec { background:var(--night); color:var(--night-txt); border:1px solid var(--night-line); }
+  .btn.sec:active { background:var(--night-hi); }
+  .btn.small { width:auto; min-height:44px; padding:0 14px; }
+  .btn.ghost { background:none; border:0; color:var(--mut); width:auto; }
+  .btn:disabled { opacity:.45; pointer-events:none; }
+  .btn svg, .ibtn svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+  .ibtn { flex:none; width:44px; height:44px; border-radius:6px; background:var(--night); border:1px solid var(--night-line); color:var(--night-txt); display:grid; place-items:center; }
+  .ibtn.plain { background:none; border:0; color:var(--mut); }
+  .ibtn:disabled { opacity:.45; pointer-events:none; }
+  .pbtn { flex:none; min-height:44px; padding:0 12px; border-radius:6px; background:var(--night); border:1px solid var(--night-line); color:var(--night-txt); font-size:14px; font-weight:500; display:flex; align-items:center; gap:8px; }
+  .av { width:20px; height:20px; border-radius:4px; background:var(--dia); color:var(--dia-ink); display:grid; place-items:center; font-size:12px; font-weight:600; text-transform:uppercase; }
 
-  /* ---- écran Postuler ---- */
-  .steps { margin-top:14px; }
-  .step { display:flex; align-items:center; gap:10px; padding:7px 0; color:var(--mut); font-size:15px; }
-  .step i { width:22px; height:22px; border-radius:50%; border:2px solid var(--surface2); flex:none; display:grid; place-items:center; font-style:normal; font-size:13px; }
-  .step.run { color:var(--txt); } .step.run i { border-color:var(--acc1); border-top-color:transparent; animation:spin .8s linear infinite; }
-  .step.done { color:var(--txt); } .step.done i { background:var(--ok); border-color:var(--ok); color:#0b0d12; }
+  /* ---- champs, cartes ---- */
+  .in { width:100%; min-height:48px; padding:0 14px; border-radius:6px; border:1px solid var(--line); background:var(--bg); color:var(--txt); font-size:16px; outline:none; }
+  .in:focus { border-color:var(--night-line); box-shadow:0 0 0 2px rgba(92,203,255,.25); }
+  textarea.in { padding:12px 14px; resize:none; line-height:1.5; display:block; }
+  select.in { appearance:none; }
+  .box { border:1px solid var(--line); border-radius:8px; background:var(--panel); overflow:hidden; }
+  .box > textarea { width:100%; min-height:96px; padding:14px; border:0; background:none; outline:none; resize:none; font-size:14px; line-height:1.55; display:block; }
+  .boxbar { display:flex; align-items:center; gap:8px; border-top:1px solid var(--line); padding:6px 6px 6px 14px; }
+  .boxbar .mono { flex:1; font-size:12px; color:var(--mut); }
+  .card { border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:16px; margin-bottom:12px; }
+  .card h2 { font-size:16px; font-weight:600; letter-spacing:-.01em; }
+  .card .hint { color:var(--mut); font-size:13.5px; margin:4px 0 12px; }
+  .card label.l { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; font-weight:500; }
+  .err { color:var(--red); font-size:14px; margin-top:10px; min-height:1em; }
+  .okm { color:var(--green); font-size:14px; margin-top:10px; }
+  .row { display:flex; gap:8px; }
+  details > summary { color:var(--mut); font-size:14px; min-height:44px; display:flex; align-items:center; cursor:pointer; }
+
+  /* ---- tableau des candidatures ---- */
+  .table { border:1px solid var(--line); border-radius:8px; background:var(--panel); overflow:hidden; }
+  .trow { width:100%; text-align:left; display:flex; align-items:center; gap:12px; padding:0 14px; min-height:64px; border-top:1px solid var(--line); }
+  .trow:first-child { border-top:0; }
+  .trow:active { background:#111; }
+  .trow .t { flex:1; min-width:0; }
+  .trow b { display:block; font-weight:500; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .trow small { display:block; font-size:13px; color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .trow .r { flex:none; text-align:right; }
+  .trow .sc { font-family:var(--mono); font-size:15px; font-weight:500; }
+  .st { display:flex; align-items:center; gap:6px; justify-content:flex-end; font-size:12.5px; color:var(--mut); }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--faint); flex:none; }
+  .dot.envoyee { background:var(--blue); } .dot.reponse { background:var(--amber); } .dot.entretien { background:var(--green); } .dot.refus { background:var(--red); }
+  .empty { padding:36px 20px; text-align:center; color:var(--mut); font-size:14px; }
+  .empty b { display:block; color:var(--txt); font-size:16px; margin-bottom:4px; font-weight:500; }
+
+  /* ---- étapes de génération ---- */
+  .steps { border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:14px 16px; margin-top:14px; }
+  .steps h2 { font-size:15px; font-weight:600; margin-bottom:6px; }
+  .step { display:flex; align-items:center; gap:10px; padding:6px 0; color:var(--faint); font-size:14.5px; }
+  .step i { width:18px; height:18px; border-radius:50%; border:2px solid var(--line); flex:none; display:grid; place-items:center; font-style:normal; font-size:11px; }
+  .step.run { color:var(--txt); } .step.run i { border-color:var(--dia); border-top-color:transparent; animation:spin .8s linear infinite; }
+  .step.done { color:var(--mut); } .step.done i { background:var(--dia); border-color:var(--dia); color:var(--dia-ink); }
   @keyframes spin { to { transform:rotate(360deg); } }
 
-  /* ---- historique ---- */
-  .item { display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:14px; margin-bottom:10px; }
-  .item .t { flex:1; min-width:0; }
-  .item b { display:block; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .item small { display:block; color:var(--mut); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
-  .badge { flex:none; width:46px; height:46px; border-radius:14px; display:grid; place-items:center; font-weight:700; font-size:16px; background:var(--surface2); }
-  .badge.hi { color:var(--ok); } .badge.mid { color:var(--warn); } .badge.lo { color:var(--bad); }
-  .st { display:inline-block; margin-top:5px; padding:2px 9px; border-radius:10px; font-size:12px; background:var(--surface2); color:var(--mut); }
-  .st.entretien { color:var(--ok); } .st.reponse { color:var(--acc1); } .st.refus { color:var(--bad); } .st.envoyee { color:var(--warn); }
-  .empty { text-align:center; color:var(--mut); padding:50px 20px; }
-  .empty b { display:block; color:var(--txt); font-size:18px; margin-bottom:6px; }
-
-  /* ---- écran résultat (plein écran) ---- */
-  .sheet { position:fixed; inset:0; z-index:20; background:var(--bg); display:flex; flex-direction:column; transform:translateY(0); animation:up .25s ease; }
-  @keyframes up { from { transform:translateY(24px); opacity:0; } to { transform:none; opacity:1; } }
-  .sbar { display:flex; align-items:center; gap:10px; padding:calc(var(--top) + 8px) 12px 8px; }
-  .icon { width:42px; height:42px; border-radius:14px; background:var(--surface2); display:grid; place-items:center; flex:none; }
-  .icon svg { width:22px; height:22px; stroke:var(--txt); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  /* ---- écran résultat plein écran ---- */
+  .sheet { position:fixed; inset:0; z-index:20; background:var(--bg); display:flex; flex-direction:column; animation:up .22s ease; }
+  @keyframes up { from { transform:translateY(18px); opacity:0; } }
+  .sbar { display:flex; align-items:center; gap:10px; padding:calc(var(--top) + 8px) 12px 0; }
   .stitle { flex:1; min-width:0; }
-  .stitle b { display:block; font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .stitle b { display:block; font-weight:600; font-size:16px; letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .stitle span { display:block; font-size:13px; color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .seg { display:flex; margin:4px 12px 10px; padding:4px; background:var(--surface); border-radius:14px; border:1px solid var(--line); }
-  .seg button { flex:1; padding:9px 0; border-radius:10px; background:none; color:var(--mut); font-size:14px; font-weight:600; }
-  .seg button.on { background:var(--surface2); color:var(--txt); }
-  .sbody { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 12px 12px; display:flex; flex-direction:column; }
-  .pane { display:flex; flex-direction:column; flex:1; min-height:0; }
-  .pane > textarea { flex:1; min-height:240px; }
-  .cnt { font-size:13px; color:var(--mut); margin:8px 4px 0; text-align:right; }
-  .cnt.over { color:var(--bad); }
-  .bar { height:10px; border-radius:6px; background:var(--surface2); overflow:hidden; margin:12px 0 8px; }
-  .bar > div { height:100%; background:var(--grad); width:0; transition:width .5s; border-radius:6px; }
-  .sfoot { padding:8px 12px calc(10px + var(--bot)); border-top:1px solid var(--line); background:rgba(11,13,18,.92); }
-  .ret { display:flex; gap:8px; margin-top:8px; }
-  .ret input { flex:1; min-width:0; }
-  .ret button { width:48px; border-radius:14px; background:var(--surface2); display:grid; place-items:center; flex:none; }
-  .ret button svg { width:20px; height:20px; stroke:var(--acc1); fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
-  .ver { display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); font-size:14px; }
-  .ver:last-child { border:0; }
-  .ver .t { flex:1; min-width:0; } .ver small { display:block; color:var(--mut); }
-  .ver button { padding:7px 12px; border-radius:12px; background:var(--surface2); font-size:13px; }
+  .tabs { display:flex; margin-top:10px; border-bottom:1px solid var(--line); padding:0 12px; }
+  .tabs button { min-height:44px; padding:0 14px; font-size:14.5px; font-weight:500; color:var(--mut); }
+  .tabs button.on { color:var(--txt); box-shadow:inset 0 -2px 0 var(--dia); }
+  .sbody { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px 12px; }
+  .sfoot { flex:none; border-top:1px solid var(--line); background:var(--bg); padding:10px 12px calc(10px + var(--bot)); display:flex; gap:8px; }
+  .paper { border-radius:4px; background:#fff; color:#111; }
+  .paper textarea { width:100%; min-height:320px; padding:24px 22px; border:0; background:none; color:#111; outline:none; resize:none; font:400 13.5px/1.62 var(--serif); display:block; }
+  .cnt { margin:8px 2px 0; text-align:right; font-family:var(--mono); font-size:12px; color:var(--mut); }
+  .cnt.over { color:var(--red); }
+  .bar { height:4px; background:var(--line); margin:10px 0 12px; } .bar > div { height:100%; background:var(--dia); width:0; transition:width .5s; }
+  .big { font-family:var(--mono); font-size:40px; font-weight:500; letter-spacing:-.04em; }
+  .li { min-height:44px; display:flex; align-items:center; gap:10px; padding:0 14px; font-size:14.5px; border-top:1px solid var(--line); }
+  .li:first-child { border-top:0; }
 
-  /* ---- menus du bas, toast ---- */
-  #scrim { position:fixed; inset:0; z-index:40; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; animation:fade .2s; }
+  /* ---- CV (design colonne latérale) ---- */
+  .cvdoc { display:flex; min-height:500px; background:#fff; color:#111; border-radius:4px; overflow:hidden; }
+  .cvside { width:35%; flex:none; background:#0A0A0A; color:#EDEDED; padding:22px 12px; font-size:10.5px; line-height:1.55; overflow-wrap:anywhere; }
+  .cvmono { font-family:var(--mono); font-size:9.5px; letter-spacing:.08em; margin:14px 0 5px; }
+  .cvside .cvmono { color:#8F8F8F; }
+  .cvmain .cvmono { color:#666; border-bottom:1px solid #E5E5E5; padding-bottom:3px; margin:14px 0 8px; }
+  .mono0 { width:36px; height:36px; border-radius:4px; background:#EDEDED; color:#000; display:grid; place-items:center; font-weight:600; font-size:14px; margin-bottom:6px; }
+  .cvmain { flex:1; min-width:0; padding:22px 16px; font-size:11px; line-height:1.5; }
+  .cvname { font-weight:600; font-size:22px; letter-spacing:-.04em; line-height:1.1; }
+  .cvtitle { color:#555; font-size:12px; margin-top:3px; }
+  .cvexp { margin-bottom:9px; } .cvexp b { font-weight:600; } .cvexp .co { color:#0068D6; font-weight:500; }
+  .cvexp .dt { font-family:var(--mono); color:#666; font-size:10px; }
+  .cvexp ul { margin:3px 0 0; padding-left:14px; color:#333; }
+  .cvedit { width:100%; min-height:420px; padding:14px; border:1px solid var(--line); border-radius:6px; background:var(--panel); color:var(--txt); font:400 13px/1.55 var(--mono); outline:none; resize:none; }
+
+  /* ---- menus du bas ---- */
+  #scrim { position:fixed; inset:0; z-index:60; background:rgba(0,0,0,.7); display:flex; align-items:flex-end; animation:fade .2s; }
   @keyframes fade { from { opacity:0; } }
-  #menu { width:100%; background:var(--surface); border-radius:24px 24px 0 0; padding:10px 14px calc(14px + var(--bot)); animation:up .22s ease; }
-  #menu h3 { margin:10px 4px 8px; font-size:15px; color:var(--mut); font-weight:500; }
-  #menu button { display:block; width:100%; text-align:left; padding:15px 14px; border-radius:14px; background:none; font-size:17px; }
-  #menu button:active, #menu button.cur { background:var(--surface2); }
-  #menu button.danger { color:var(--bad); }
-  #toast { position:fixed; left:50%; bottom:calc(86px + var(--bot)); transform:translate(-50%,20px); z-index:50; padding:11px 18px; border-radius:20px; background:#232a3d; border:1px solid var(--line); font-size:15px; opacity:0; pointer-events:none; transition:.25s; max-width:90vw; text-align:center; }
+  .bsheet { width:100%; background:var(--panel); border-top:1px solid var(--line); border-radius:12px 12px 0 0; padding:14px 16px calc(18px + var(--bot)); animation:up .2s ease; max-height:88vh; overflow-y:auto; }
+  .bsheet h3 { font-size:17px; font-weight:600; letter-spacing:-.01em; }
+  .bsheet .hint { color:var(--mut); font-size:13.5px; margin:4px 0 14px; }
+  .mrow { width:100%; min-height:48px; text-align:left; display:flex; align-items:center; justify-content:space-between; padding:0 14px; font-size:15px; border-top:1px solid var(--line); }
+  .mrow:first-child { border-top:0; } .mrow:active, .mrow.cur { background:#111; } .mrow.danger { color:var(--red); }
+  .mrow svg { width:14px; height:14px; stroke:var(--faint); fill:none; stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+  .mbox { border:1px solid var(--line); border-radius:8px; overflow:hidden; margin-bottom:12px; }
+  #toast { position:fixed; left:50%; bottom:calc(88px + var(--bot)); transform:translate(-50%,16px); z-index:80; padding:11px 16px; border-radius:6px; background:#111; border:1px solid var(--line); font-size:14.5px; opacity:0; pointer-events:none; transition:.22s; max-width:90vw; text-align:center; }
   #toast.on { opacity:1; transform:translate(-50%,0); }
+  .ver { display:flex; align-items:center; gap:10px; padding:12px 0; border-top:1px solid var(--line); font-size:14px; }
+  .ver:first-child { border-top:0; } .ver .t { flex:1; min-width:0; } .ver small { display:block; color:var(--mut); }
 
-  /* ---- chat ---- */
-  #v-chat { display:flex; flex-direction:column; padding:0; overflow:hidden; }
-  #chatTop { display:flex; align-items:center; justify-content:space-between; padding:calc(var(--top) + 14px) 16px 8px; }
-  #chatTop h1 { font-size:28px; letter-spacing:-.02em; margin:0; }
-  #chatTop button { background:none; color:var(--acc1); font-size:15px; }
-  #log { flex:1; min-height:0; overflow-y:auto; padding:8px 14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch; }
-  .m { max-width:85%; padding:10px 14px; border-radius:20px; white-space:pre-wrap; word-wrap:break-word; }
-  .m.u { align-self:flex-end; background:var(--grad); color:#fff; border-bottom-right-radius:6px; }
-  .m.a { align-self:flex-start; background:var(--surface); border:1px solid var(--line); border-bottom-left-radius:6px; }
-  .m.e { align-self:center; color:var(--bad); font-size:14px; }
-  #form { display:flex; gap:8px; padding:8px 12px 10px; }
-  #form textarea { flex:1; max-height:120px; border-radius:22px; padding:11px 16px; }
-  #send { width:46px; height:46px; border-radius:50%; background:var(--grad); color:#fff; font-size:20px; align-self:flex-end; }
-  #send:disabled { opacity:.4; }
+  /* ---- coach ---- */
+  #v-coach { display:flex; flex-direction:column; padding:0; overflow:hidden; }
+  #cTop { padding:calc(var(--top) + 14px) 16px 10px; }
+  #cCtx { display:flex; align-items:center; gap:8px; margin-top:12px; padding:0 4px 0 12px; border:1px solid var(--night-line); background:var(--night); border-radius:6px; min-height:40px; font-size:13.5px; color:var(--night-txt); }
+  #cCtx span { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  #cLog { flex:1; min-height:0; overflow-y:auto; padding:6px 16px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch; }
+  .m { max-width:88%; padding:10px 14px; border-radius:8px; white-space:pre-wrap; overflow-wrap:anywhere; font-size:15px; line-height:1.5; }
+  .m.u { align-self:flex-end; background:var(--night); border:1px solid var(--night-line); color:var(--night-txt); }
+  .m.a { align-self:flex-start; background:var(--panel); border:1px solid var(--line); }
+  .m.e { align-self:center; color:var(--red); font-size:14px; padding:0; }
+  #cChips { display:flex; flex-direction:column; gap:8px; padding:4px 0; }
+  #cForm { display:flex; gap:8px; padding:8px 12px 10px; align-items:flex-end; }
+  #cForm textarea { flex:1; max-height:120px; }
 
   /* ---- connexion ---- */
   #login { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
-  .logo { width:76px; height:76px; border-radius:24px; background:var(--grad); display:grid; place-items:center; margin-bottom:18px; box-shadow:0 16px 40px -12px rgba(108,140,255,.8); font-size:34px; }
-  #login h1 { margin:0 0 6px; font-size:26px; }
+  .logo { width:56px; height:56px; border-radius:8px; border:1px solid var(--night-line); background:var(--night); display:grid; place-items:center; margin-bottom:18px; }
+  .logo i { width:20px; height:20px; background:var(--dia); transform:rotate(45deg); }
+  #login h1 { font-size:26px; font-weight:600; letter-spacing:-.04em; margin-bottom:6px; }
   #login .in { text-align:center; margin:22px 0 12px; max-width:340px; }
   #login .btn { max-width:340px; }
 </style>
 </head>
 <body>
-<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6c8cff"/><stop offset="1" stop-color="#9b6bff"/></linearGradient></defs></svg>
 
 <div id="login">
-  <div class="logo">✍️</div>
+  <div class="logo"><i></i></div>
   <h1>Postuler</h1>
-  <div class="mut">Entre ton code d’accès</div>
+  <div class="sub" style="margin:0">Entre ton code d’accès</div>
   <input id="code" class="in" type="password" autocomplete="off" autocapitalize="off" placeholder="Code">
   <button class="btn" id="go">Entrer</button>
   <div class="err" id="loginErr"></div>
@@ -165,64 +192,92 @@
 <div id="main">
   <div id="views">
 
+    <!-- ===== Postuler ===== -->
     <section class="view" id="v-postuler">
-      <h1>Nouvelle candidature</h1>
-      <div class="sub" id="pSub"></div>
-      <div class="card" id="pCompose">
-        <h2>L’annonce</h2>
-        <p>Copie le texte de l’offre sur Indeed, puis colle-le ici.</p>
-        <textarea id="offre" class="in" rows="7" style="margin-top:12px" placeholder="Colle l’annonce ici…"></textarea>
-        <div class="row" style="margin-top:12px">
-          <button class="btn sec small" id="coller" style="flex:1">Coller</button>
-          <button class="btn sec small" id="vider" style="flex:none">Effacer</button>
-        </div>
-        <button class="btn" id="gen" style="margin-top:12px">Générer ma candidature</button>
-        <div class="err" id="gErr"></div>
+      <div class="head">
+        <div><h1>Postuler</h1><div class="sub">Colle une annonce, copie ta lettre.</div></div>
+        <button class="pbtn" id="pbtn" aria-label="Changer de profil"><span class="av" id="pav">?</span><span id="pname">profil</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8FB3FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
       </div>
-      <div class="card" id="pSteps" hidden>
-        <h2 id="pStepsT">Je prépare ta candidature</h2>
-        <div class="steps">
+      <div class="sec">
+        <div class="lbl">Annonce</div>
+        <div class="box">
+          <label for="offre" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Texte de l’annonce</label>
+          <textarea id="offre" placeholder="Colle ici le texte complet de l’annonce Indeed…"></textarea>
+          <div class="boxbar">
+            <span class="mono" id="ocnt">0 caractère</span>
+            <button class="btn ghost small" id="vider">Effacer</button>
+            <button class="btn sec small" id="coller"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="3" width="8" height="4" rx="1"/><path d="M16 5h2a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h2"/></svg>Coller</button>
+          </div>
+        </div>
+        <button class="btn" id="gen" style="margin-top:12px">Générer la candidature</button>
+        <div class="err" id="gErr"></div>
+        <div class="steps" id="pSteps" hidden>
+          <h2 id="pStepsT">Je prépare ta candidature</h2>
           <div class="step" data-s="META"><i></i>Lecture de l’annonce</div>
           <div class="step" data-s="SCORE"><i></i>Calcul de la compatibilité</div>
           <div class="step" data-s="LETTRE"><i></i>Rédaction de la lettre</div>
           <div class="step" data-s="CV"><i></i>Adaptation du CV</div>
         </div>
       </div>
+      <div class="sec">
+        <div class="lbl"><span>Candidatures <span class="mono" id="hcount" style="margin-left:4px">0</span></span>
+          <button class="ibtn plain" id="hsearchbtn" aria-label="Rechercher" style="margin:-10px -6px -10px 0"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg></button></div>
+        <input id="hq" class="in" type="search" placeholder="Entreprise, poste, mot-clé…" aria-label="Rechercher une candidature" hidden style="margin-bottom:10px">
+        <div class="table" id="hListe"></div>
+      </div>
     </section>
 
-    <section class="view" id="v-histo" hidden>
-      <h1>Historique</h1>
-      <input id="hq" class="in" type="search" placeholder="Rechercher (entreprise, poste, mot-clé)" style="margin-bottom:14px">
-      <div id="hListe"></div>
+    <!-- ===== Coach ===== -->
+    <section class="view" id="v-coach" hidden>
+      <div id="cTop">
+        <div class="head" style="margin-bottom:0">
+          <div><h1>Coach</h1><div class="sub">Entretiens, relances, réponses aux recruteurs.</div></div>
+          <button class="btn ghost small" id="cClear">Effacer</button>
+        </div>
+        <div id="cCtx" hidden><span id="cCtxT"></span><button class="ibtn plain" id="cCtxX" aria-label="Retirer le contexte" style="width:40px;height:40px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      </div>
+      <div id="cLog"></div>
+      <form id="cForm">
+        <label for="cMsg" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Ton message</label>
+        <textarea id="cMsg" class="in" rows="1" placeholder="Écris au coach…" enterkeyhint="send"></textarea>
+        <button class="btn" id="cSend" type="submit" aria-label="Envoyer" style="width:48px;padding:0"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12l14-7-5 14-2-6z"/></svg></button>
+      </form>
     </section>
 
+    <!-- ===== Profil ===== -->
     <section class="view" id="v-profil" hidden>
-      <h1>Mon profil</h1>
+      <div class="head"><div><h1>Mon profil</h1><div class="sub">Les lettres et CV s’appuient uniquement sur lui.</div></div></div>
       <div class="card">
         <h2>Nom du profil</h2>
-        <p>Toujours le même (ex : anass). Il retrouve ton profil et ton historique.</p>
-        <div class="row" style="margin-top:12px"><input id="pid" class="in" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" style="flex:1"><button class="btn sec small" id="pload">Charger</button></div>
-        <div class="mut" id="pEtat" style="margin-top:8px"></div>
+        <div class="hint">Toujours le même (ex : anass). Il retrouve ton profil et ton historique.</div>
+        <div class="row"><input id="pid" class="in" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" aria-label="Nom du profil" style="flex:1"><button class="btn sec small" id="pload">Charger</button></div>
+        <div class="hint" id="pEtat" style="margin:8px 0 0"></div>
       </div>
       <div class="card" id="pImport" hidden>
         <h2>Importer mon CV</h2>
-        <p>PDF, Word ou texte. Tu peux aussi le coller ci-dessous.</p>
-        <input id="pfile" type="file" accept=".pdf,.docx,.txt,.md" class="in" style="margin-top:12px">
-        <textarea id="ptexte" class="in" rows="6" style="margin-top:10px" placeholder="Ou colle ton CV et tes expériences ici"></textarea>
+        <div class="hint">PDF, Word ou texte. Tu peux aussi le coller ci-dessous.</div>
+        <input id="pfile" type="file" accept=".pdf,.docx,.txt,.md" class="in" aria-label="Fichier du CV" style="padding-top:11px">
+        <textarea id="ptexte" class="in" rows="5" style="margin-top:10px" placeholder="Ou colle ton CV et tes expériences ici" aria-label="CV collé"></textarea>
         <button class="btn" id="pana" style="margin-top:12px">Analyser mon CV</button>
         <div class="err" id="pErr"></div>
-        <details style="margin-top:14px">
-          <summary class="mut">J’ai déjà une fiche complète (.md)</summary>
-          <p class="mut" style="margin:8px 0">Colle la fiche telle quelle : elle est découpée automatiquement en profil, règles de rédaction et notes internes.</p>
-          <textarea id="pFicheTexte" class="in" rows="6" placeholder="# Fiche …"></textarea>
+        <details style="margin-top:8px">
+          <summary>J’ai déjà une fiche complète (.md)</summary>
+          <div class="hint" style="margin:6px 0 10px">Colle la fiche telle quelle : elle est découpée en profil, règles de rédaction et notes internes.</div>
+          <textarea id="pFicheTexte" class="in" rows="5" placeholder="# Fiche …" aria-label="Fiche complète"></textarea>
           <button class="btn sec" id="pFiche" style="margin-top:10px">Importer la fiche</button>
         </details>
       </div>
       <div id="pEdit" hidden>
         <div class="card">
-          <h2>Mon profil</h2>
-          <p>Les lettres et CV s’appuient uniquement sur ce texte. Corrige ce qui est faux.</p>
-          <textarea id="pmd" class="in" rows="14" style="margin-top:12px"></textarea>
+          <h2>Profil</h2>
+          <div class="hint">Corrige ce qui est faux, puis enregistre.</div>
+          <textarea id="pmd" class="in" rows="12" aria-label="Profil"></textarea>
+        </div>
+        <div class="card">
+          <h2>Règles de rédaction</h2>
+          <div class="hint">Consignes impératives, appliquées à chaque lettre et chaque CV.</div>
+          <textarea id="rRegles" class="in" rows="5" placeholder="Ex : ne jamais écrire que le BTS est un diplôme" aria-label="Règles de rédaction"></textarea>
         </div>
         <div class="card">
           <h2>Réglages d’écriture</h2>
@@ -230,79 +285,76 @@
           <select id="rTon" class="in"><option value="professionnel">Professionnel</option><option value="chaleureux">Chaleureux</option><option value="direct">Direct</option></select>
           <label class="l" for="rMax">Longueur max de la lettre (caractères)</label>
           <input id="rMax" class="in" type="number" inputmode="numeric" min="500" max="3000" step="100">
-          <label class="l" style="display:flex;align-items:center;gap:10px;margin-top:16px"><input id="rTirets" type="checkbox" style="width:22px;height:22px"> Pas de tiret long (— –)</label>
+          <label class="l" style="display:flex;align-items:center;gap:10px;margin-top:16px;color:var(--txt)"><input id="rTirets" type="checkbox" style="width:20px;height:20px;accent-color:#5CCBFF"> Pas de tiret long (— –)</label>
           <label class="l" for="rNotes">Consignes personnelles</label>
           <textarea id="rNotes" class="in" rows="3" maxlength="500" placeholder="Ex : toujours insister sur ma disponibilité"></textarea>
         </div>
         <div class="card">
-          <h2>Règles de rédaction</h2>
-          <p>Consignes impératives, appliquées à chaque lettre et chaque CV (ce qu’il ne faut jamais écrire, formulations à respecter).</p>
-          <textarea id="rRegles" class="in" rows="6" style="margin-top:12px" placeholder="Ex : ne jamais écrire que le BTS est un diplôme"></textarea>
-        </div>
-        <div class="card">
           <h2>Ce que l’appli a appris</h2>
-          <p>Mémorisé à partir de tes retouches, et appliqué aux prochaines lettres. Modifie ou efface ce que tu veux.</p>
-          <textarea id="rApprises" class="in" rows="5" style="margin-top:12px" placeholder="Rien pour l’instant. Utilise « Retoucher » sur une lettre."></textarea>
+          <div class="hint">Mémorisé à partir de tes retouches, appliqué aux prochaines lettres.</div>
+          <textarea id="rApprises" class="in" rows="4" placeholder="Rien pour l’instant. Utilise « Retoucher » sur une lettre." aria-label="Préférences apprises"></textarea>
         </div>
+        <details class="card" id="pNotesBox" hidden>
+          <summary style="min-height:0;color:var(--txt);font-weight:600;font-size:16px">Notes internes</summary>
+          <div class="hint" style="margin-top:8px">Jamais envoyées à Claude. Utile pour suivre ce qui reste à confirmer.</div>
+          <textarea id="pNotes" class="in" rows="10" readonly aria-label="Notes internes"></textarea>
+        </details>
         <button class="btn" id="psave">Enregistrer</button>
         <div id="pOk" class="okm"></div>
         <button class="btn sec" id="pnew" style="margin-top:12px">Réimporter un CV</button>
       </div>
     </section>
-
-    <section class="view" id="v-chat" hidden>
-      <div id="chatTop"><h1>Chat</h1><button id="reset">Nouvelle discussion</button></div>
-      <div id="log"></div>
-      <form id="form">
-        <textarea id="msg" class="in" rows="1" placeholder="Écris ton message…" enterkeyhint="send"></textarea>
-        <button id="send" type="submit" aria-label="Envoyer">↑</button>
-      </form>
-    </section>
   </div>
 
   <nav id="nav">
-    <button data-v="postuler" class="on"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg><span>Postuler</span></button>
-    <button data-v="histo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Historique</span></button>
-    <button data-v="profil"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span>Profil</span></button>
-    <button data-v="chat"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L3 21l1.8-5.5A8 8 0 1121 12z"/></svg><span>Chat</span></button>
+    <button data-v="postuler" class="on"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Postuler</button>
+    <button data-v="coach"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a8 8 0 01-11.5 7.2L3 21l1.8-5.5A8 8 0 1121 12z"/></svg>Coach</button>
+    <button data-v="profil"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>Profil</button>
   </nav>
 </div>
 
-<!-- écran résultat (après génération ou depuis l'historique) -->
+<!-- ===== Résultat d'une candidature ===== -->
 <div class="sheet" id="res" hidden>
   <div class="sbar">
-    <button class="icon" id="rBack" aria-label="Retour"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <button class="ibtn" id="rBack" aria-label="Retour"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
     <div class="stitle"><b id="rTitre">Candidature</b><span id="rSous"></span></div>
-    <button class="pill" id="rStatut">Brouillon ▾</button>
-    <button class="icon" id="rPlus" aria-label="Plus"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+    <button class="pbtn" id="rStatut"><span class="dot" id="rDot"></span><span id="rStatutT">Brouillon</span>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8FB3FF" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 10l5 5 5-5"/></svg></button>
+    <button class="ibtn" id="rMore" aria-label="Plus d’actions"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
   </div>
-  <div class="seg" id="rSeg">
-    <button data-t="lettre" class="on">Lettre</button><button data-t="cv">CV</button><button data-t="score">Score</button><button data-t="plus">Offre</button>
+  <div class="tabs" id="rSeg">
+    <button data-t="lettre" class="on">Lettre</button><button data-t="cv">CV</button><button data-t="score">Score <span class="mono" id="rScoreTab" style="font-size:12.5px;margin-left:4px"></span></button>
   </div>
   <div class="sbody">
-    <div class="pane" data-p="lettre"><textarea id="rLettre" class="in"></textarea><div class="cnt" id="rCnt"></div></div>
-    <div class="pane" data-p="cv" hidden><textarea id="rCv" class="in"></textarea></div>
-    <div class="pane" data-p="score" hidden>
-      <div class="card"><h2 id="rScoreT">Compatibilité</h2><div class="bar"><div id="rBar"></div></div>
-        <div id="rOk"></div><div id="rNo"></div><p id="rConseil"></p></div>
+    <div data-p="lettre">
+      <div class="paper"><label for="rLettre" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Lettre de motivation</label><textarea id="rLettre"></textarea></div>
+      <div class="cnt" id="rCnt"></div>
     </div>
-    <div class="pane" data-p="plus" hidden>
-      <div class="card"><h2>Annonce</h2><textarea id="rOffre" class="in" rows="8" readonly style="margin-top:10px"></textarea></div>
-      <div class="card"><h2>Versions</h2><p>Chaque changement est gardé. Tu peux revenir en arrière.</p><div id="rVers" style="margin-top:6px"></div></div>
+    <div data-p="cv" hidden>
+      <div class="cvdoc" id="rCvView"></div>
+      <textarea class="cvedit" id="rCv" hidden aria-label="Texte du CV"></textarea>
+      <button class="btn sec" id="rCvToggle" style="margin-top:12px">Modifier le texte</button>
+    </div>
+    <div data-p="score" hidden>
+      <div class="card" style="padding:16px">
+        <div style="display:flex;align-items:baseline;gap:6px"><span class="big" id="rScoreVal">–</span><span class="mono" style="font-size:16px;color:var(--mut)">/100</span></div>
+        <div class="bar"><div id="rBar"></div></div>
+        <p id="rConseil" style="font-size:14px;color:var(--mut);line-height:1.5"></p>
+      </div>
+      <div class="lbl" style="margin-top:16px">Couvert par ton profil</div>
+      <div class="table" id="rOkList"></div>
+      <div class="lbl" style="margin-top:16px">À renforcer</div>
+      <div class="table" id="rNoList"></div>
     </div>
   </div>
   <div class="sfoot" id="rFoot">
-    <div id="rRetoucheBloc">
-      <div class="chips" id="rQuick">
-        <button class="chip">Plus court</button><button class="chip">Plus chaleureux</button><button class="chip">Plus direct</button><button class="chip">Insister sur ma disponibilité</button>
-      </div>
-      <div class="ret"><input id="rInstr" class="in" type="text" placeholder="Retoucher… (ex : parle de mon expérience en caisse)" enterkeyhint="send"><button id="rEnvoi" aria-label="Retoucher"><svg viewBox="0 0 24 24"><path d="M5 12l14-7-5 14-2-6z"/></svg></button></div>
-    </div>
-    <div class="row" style="margin-top:10px"><button class="btn" id="rCopier">Copier la lettre</button><button class="btn sec" id="rExport" style="width:56px;flex:none" aria-label="Télécharger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></button></div>
+    <button class="btn sec small" id="rRetouche"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg>Retoucher</button>
+    <button class="btn" id="rCopier" style="flex:1"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 012-2h10"/></svg><span id="rCopierT">Copier la lettre</span></button>
+    <button class="ibtn" id="rExport" aria-label="Télécharger" style="width:48px;height:48px"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></button>
   </div>
 </div>
 
-<div id="scrim" hidden><div id="menu"></div></div>
+<div id="scrim" hidden><div class="bsheet" id="menu"></div></div>
 <div id="toast"></div>
 
 <script src="/vendor/jszip.min.js"></script>

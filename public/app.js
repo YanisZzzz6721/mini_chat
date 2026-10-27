@@ -1,4 +1,4 @@
-// Socle : utilitaires, connexion, navigation, chat. Les écrans de candidature sont dans candidature.js.
+// Socle : utilitaires, connexion, navigation. Les écrans sont dans candidature.js.
 const $ = (id) => document.getElementById(id);
 const store = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -13,23 +13,32 @@ function toast(msg, ms = 1800) {
   clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('on'), ms);
 }
 
-// Menu du bas : renvoie la valeur choisie, ou null
-function menu(titre, items) {
+const CHEVRON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>';
+
+// Feuille du bas. build(el, fermer) remplit le contenu ; la promesse se résout avec fermer(valeur).
+function feuille(build) {
   return new Promise((resolve) => {
     const m = $('menu');
     m.replaceChildren();
-    if (titre) { const h = document.createElement('h3'); h.textContent = titre; m.appendChild(h); }
-    const fin = (v) => { $('scrim').hidden = true; resolve(v); };
+    const fermer = (v) => { $('scrim').hidden = true; resolve(v === undefined ? null : v); };
+    build(m, fermer);
+    $('scrim').onclick = (e) => { if (e.target === $('scrim')) fermer(null); };
+    $('scrim').hidden = false;
+  });
+}
+// Liste de choix : renvoie la valeur choisie, ou null
+function menu(titre, items) {
+  return feuille((m, fermer) => {
+    if (titre) { const h = document.createElement('h3'); h.textContent = titre; h.style.marginBottom = '10px'; m.appendChild(h); }
+    const box = document.createElement('div'); box.className = 'mbox'; m.appendChild(box);
     items.forEach((it) => {
       const b = document.createElement('button');
-      b.textContent = it.label;
-      if (it.cur) b.className = 'cur';
-      if (it.danger) b.className = 'danger';
-      b.onclick = () => fin(it.value);
-      m.appendChild(b);
+      b.className = 'mrow' + (it.cur ? ' cur' : '') + (it.danger ? ' danger' : '');
+      const t = document.createElement('span'); t.textContent = it.label; b.appendChild(t);
+      if (!it.danger) b.insertAdjacentHTML('beforeend', CHEVRON);
+      b.onclick = () => fermer(it.value);
+      box.appendChild(b);
     });
-    $('scrim').onclick = (e) => { if (e.target === $('scrim')) fin(null); };
-    $('scrim').hidden = false;
   });
 }
 
@@ -83,41 +92,6 @@ function setView(v) {
   if (window.surVue) window.surVue(v);
 }
 document.querySelectorAll('#nav button').forEach((b) => { b.onclick = () => setView(b.dataset.v); });
-
-// ---------- chat ----------
-let sessionId = store.get('sid');
-const newSid = () => { sessionId = crypto.randomUUID(); store.set('sid', sessionId); };
-if (!sessionId) newSid();
-let chatOccupe = false;
-
-function ajouter(cls, texte) {
-  const d = document.createElement('div');
-  d.className = 'm ' + cls; d.textContent = texte;
-  $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
-  return d;
-}
-$('reset').onclick = () => { newSid(); $('log').innerHTML = ''; };
-$('msg').addEventListener('input', (e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; });
-
-$('form').onsubmit = async (e) => {
-  e.preventDefault();
-  const texte = $('msg').value.trim();
-  if (!texte || chatOccupe) return;
-  chatOccupe = true; $('send').disabled = true;
-  $('msg').value = ''; $('msg').style.height = 'auto';
-  ajouter('u', texte);
-  const bulle = ajouter('a', '…');
-  let recu = false;
-  try {
-    const r = await api('/api/chat', { method: 'POST', body: JSON.stringify({ message: texte, sessionId }) });
-    if (!r.ok) { bulle.remove(); ajouter('e', await erreurDe(r)); }
-    else await lireFlux(r, (ev) => {
-      if (ev.t === 'delta') { if (!recu) { bulle.textContent = ''; recu = true; } bulle.textContent += ev.text; $('log').scrollTop = $('log').scrollHeight; }
-      else if (ev.t === 'error') { if (!recu) bulle.remove(); ajouter('e', ev.message); }
-    });
-  } catch { bulle.remove(); ajouter('e', 'Connexion perdue, réessaie.'); }
-  chatOccupe = false; $('send').disabled = false;
-};
 
 // ---------- démarrage ----------
 (async () => {

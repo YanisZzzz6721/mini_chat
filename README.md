@@ -26,12 +26,12 @@ Le terminal affiche un lien `https://xxxx.trycloudflare.com` : envoie-le avec le
 Ouvrir le lien dans **Safari** → Partager → **Sur l'écran d'accueil**. L'appli s'ouvre ensuite en plein écran. Si le lien change, refais l'ajout.
 
 ## Application Postuler (mobile)
-Quatre onglets : **Postuler**, **Historique**, **Profil**, **Chat**.
+Design noir inspiré de Vercel (Geist, angles à 6 px, boutons principaux bleu diamant, secondaires bleu nuit). Trois onglets : **Postuler**, **Coach**, **Profil**.
 
-1. **Profil** (une seule fois) : nom de profil (ex : `anass`), import du CV (PDF, Word, texte ou collé), relecture du profil structuré, réglages d'écriture (ton, longueur max, pas de tiret long).
-2. **Postuler** : coller l'annonce Indeed, « Générer ». Résultat en plein écran : lettre, CV adapté, score avec mots-clés manquants, annonce. Boutons **Copier** (priorité) et téléchargement (lettre .docx, CV PDF).
-3. **Retoucher** : sous la lettre ou le CV, des puces (« Plus court »…) ou une consigne libre. Claude réécrit, et si la consigne vaut pour l'avenir (ton, longueur, ce qu'il ne faut jamais dire), elle est mémorisée.
-4. **Historique** : toutes les candidatures, recherche, statut (brouillon, envoyée, réponse, entretien, refus), versions successives avec retour en arrière, suppression.
+1. **Profil** (une seule fois) : nom de profil (ex : `anass`), import du CV (PDF, Word, texte) ou d'une fiche `.md` complète, relecture, règles de rédaction, réglages d'écriture (ton, longueur max, pas de tiret long).
+2. **Postuler** : coller l'annonce Indeed, « Générer ». Résultat en plein écran : lettre (modifiable), CV au design colonne latérale, score avec points couverts / à renforcer. Boutons **Copier** (priorité) et téléchargement (lettre .docx, CV PDF). La liste **Candidatures** est sous la zone d'annonce (recherche, statut, versions).
+3. **Retoucher** : sous la lettre ou le CV, des consignes rapides ou libres. Claude réécrit, et si la consigne vaut pour l'avenir (ton, longueur, ce qu'il ne faut jamais dire), elle est mémorisée.
+4. **Coach** : un chat qui connaît le profil, les règles et la candidature ouverte (menu ⋯ d'une candidature, « Préparer l'entretien ») : questions d'entretien avec réponses tirées des vrais faits, relances, réponses à un recruteur.
 
 ### Fiche complète d'un candidat (données « en dur » en .md)
 Deux façons de donner à l'appli une fiche `.md` complète (faits vérifiés, règles de rédaction, notes) :

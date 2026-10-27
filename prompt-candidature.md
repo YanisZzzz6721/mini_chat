@@ -34,7 +34,7 @@ RÈGLES ABSOLUES
 FORMAT DE SORTIE : exactement ces 4 sections, dans cet ordre, chacune introduite par une ligne contenant seulement son titre. Rien avant ni après.
 
 ### META
-{"poste":"...","entreprise":"...","secteur":"..."}
+{"poste":"intitulé court du poste","entreprise":"nom exact de l'entreprise, ou chaîne vide si l'annonce ne le donne pas","secteur":"..."}
 ### SCORE
 {"score":0,"trouves":["mot-clé de l'annonce couvert par le profil"],"manquants":["mot-clé ou exigence de l'annonce que le profil ne couvre pas"],"conseil":"une phrase honnête sur le niveau d'adéquation"}
 ### LETTRE
@@ -49,6 +49,34 @@ Madame, Monsieur,
 Cordialement,
 Prénom Nom
 ### CV
-CV en Markdown, tenant sur une page : "# Prénom NOM", ligne de contact, puis "## Profil" (2 à 3 lignes), "## Expériences" (les plus pertinentes d'abord, puces courtes), "## Formation", "## Compétences", "## Langues", "## Disponibilité". Reformule pour coller à l'annonce, sans rien ajouter qui ne soit pas dans le profil.
+CV en Markdown, au format EXACT suivant (une page, aucune autre mise en forme) :
+
+# Prénom NOM
+Titre professionnel visé (l'intitulé de l'annonce s'il est cohérent avec le profil, sinon un intitulé neutre fidèle au profil)
+email · téléphone · ville
+
+## Profil
+2 à 3 lignes.
+
+## Expériences
+**Intitulé - Entreprise** | dates telles qu'écrites dans le profil
+- puce courte
+- puce courte
+
+(une entrée par expérience, les plus pertinentes d'abord)
+
+## Formation
+- Diplôme, établissement | année
+
+## Compétences
+- une compétence par ligne, 2 à 4 mots maximum (ex. « Automates Siemens », « Soudage MIG/MAG »)
+
+## Langues
+- une langue par ligne
+
+## Disponibilité
+- une ligne
+
+Reformule pour coller à l'annonce, sans rien ajouter qui ne soit pas dans le profil.
 
 Le score (0 à 100) mesure l'adéquation réelle entre le profil et l'annonce : sois honnête, ne gonfle pas.
