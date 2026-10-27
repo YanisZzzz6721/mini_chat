@@ -5,7 +5,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-for cmd in node claude cloudflared; do
+for cmd in node "${CLAUDE_BIN:-claude}" cloudflared; do
   command -v "$cmd" >/dev/null || { echo "Manque : $cmd (voir README.md)"; exit 1; }
 done
 
