@@ -63,13 +63,51 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
       fs.renameSync(vieux, vieux + '.migre');
     } catch (e) { console.error('migration profil', id, e.message); }
   }
+  // Fiche complète (.md) -> profil.md (faits), regles.md (règles de rédaction impératives), notes.md (non envoyé à Claude)
+  const sansAccent = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const SEC_REGLES = /^regles? de redaction/;
+  const SEC_NOTES = /^(livrables|reste a confirmer|prochaines etapes|plan habilitation)/;
+  function decouperFiche(txt) {
+    const parts = txt.replace(/\r\n/g, '\n').split(/^(?=## )/m);
+    const lignes = parts[0].trim().split('\n');
+    const titre = lignes.find((l) => l.startsWith('# ')) || '';
+    const profil = [titre], regles = [], notes = [];
+    const tete = lignes.filter((l) => l !== titre).join('\n').trim();
+    if (tete) notes.push('## En-tête\n' + tete);
+    parts.slice(1).forEach((sec) => {
+      const [t, ...corps] = sec.split('\n');
+      const nom = sansAccent(t.replace(/^##\s*/, '').trim());
+      if (SEC_REGLES.test(nom)) regles.push(corps.join('\n').trim());
+      else if (SEC_NOTES.test(nom)) notes.push(sec.trim());
+      else profil.push(sec.trim());
+    });
+    return { profil: profil.filter(Boolean).join('\n\n'), regles: regles.join('\n\n'), notes: notes.join('\n\n') };
+  }
+  function importerFiche(id, texte) {
+    const f = decouperFiche(texte);
+    if (f.profil.length < 100) return null;
+    const d = dossier(id);
+    fs.mkdirSync(d, { recursive: true });
+    fs.writeFileSync(path.join(d, 'fiche.md'), texte);
+    fs.writeFileSync(path.join(d, 'profil.md'), f.profil + '\n');
+    fs.writeFileSync(path.join(d, 'regles.md'), f.regles ? f.regles + '\n' : '');
+    fs.writeFileSync(path.join(d, 'notes.md'), f.notes ? f.notes + '\n' : '');
+    if (!fs.existsSync(path.join(d, 'prefs.json'))) fs.writeFileSync(path.join(d, 'prefs.json'), JSON.stringify(PREFS_DEFAUT, null, 2));
+    return { profil: f.profil.length, regles: f.regles.length, notes: f.notes.length };
+  }
+
   function charger(id) {
     migrer(id);
     const d = dossier(id);
+    // une fiche.md déposée à la main dans le dossier est importée au premier chargement
+    if (!fs.existsSync(path.join(d, 'profil.md')) && fs.existsSync(path.join(d, 'fiche.md'))) importerFiche(id, lireFichier(path.join(d, 'fiche.md')));
     if (!fs.existsSync(path.join(d, 'profil.md'))) return null;
     let prefs = {};
     try { prefs = JSON.parse(lireFichier(path.join(d, 'prefs.json'), '{}')); } catch {}
-    return { md: lireFichier(path.join(d, 'profil.md')), prefs: prefsValides(prefs), apprises: lireFichier(path.join(d, 'preferences.md')) };
+    return {
+      md: lireFichier(path.join(d, 'profil.md')), prefs: prefsValides(prefs), apprises: lireFichier(path.join(d, 'preferences.md')),
+      regles: lireFichier(path.join(d, 'regles.md')), notes: lireFichier(path.join(d, 'notes.md')),
+    };
   }
 
   // ---------- historique ----------
@@ -221,7 +259,21 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
     fs.writeFileSync(path.join(dossier(id), 'profil.md'), body.md);
     fs.writeFileSync(path.join(dossier(id), 'prefs.json'), JSON.stringify(prefsValides(body.prefs), null, 2));
     if (typeof body.apprises === 'string') fs.writeFileSync(path.join(dossier(id), 'preferences.md'), body.apprises.slice(0, 4000));
+    if (typeof body.regles === 'string') fs.writeFileSync(path.join(dossier(id), 'regles.md'), body.regles.slice(0, 8000));
     json(res, 200, { ok: true });
+  };
+
+  h['POST /api/profil/fiche'] = async (req, res) => {
+    if (!auth(req, res)) return;
+    let body;
+    try { body = await readBody(req, 60000); } catch { return refus(res, 'Fiche trop longue (60000 caractères max).'); }
+    const id = idDe(body.id);
+    if (!ID.test(id)) return refus(res, 'Nom de profil invalide.');
+    const texte = typeof body.texte === 'string' ? body.texte.trim() : '';
+    if (texte.length < 200) return refus(res, 'Colle la fiche complète.');
+    const r = importerFiche(id, texte);
+    if (!r) return refus(res, 'Fiche illisible : il faut au moins un titre « # » et des sections « ## ».');
+    json(res, 200, { ok: true, ...r });
   };
 
   h['POST /api/profil/analyse'] = async (req, res) => {
@@ -254,6 +306,7 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
 
     const system = prompt('prompt-candidature.md')
       .replace('{{PROFIL}}', () => p.md)
+      .replace('{{REGLES_PROFIL}}', () => p.regles.trim() || '(aucune)')
       .replace('{{PREFERENCES}}', () => p.apprises.trim() || '(aucune pour l’instant)')
       .replace('{{EXEMPLES}}', () => exemples(id, offre))
       .replace('{{REGLES}}', () => reglesDe(p.prefs));
@@ -307,6 +360,7 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
     const system = prompt('prompt-retouche.md')
       .replace('{{CIBLE}}', cible === 'lettre' ? 'la lettre de motivation' : 'le CV (en Markdown)')
       .replace('{{PROFIL}}', () => p.md)
+      .replace('{{REGLES_PROFIL}}', () => p.regles.trim() || '(aucune)')
       .replace('{{PREFERENCES}}', () => p.apprises.trim() || '(aucune pour l’instant)')
       .replace('{{REGLES}}', () => reglesDe(p.prefs));
     const message = `ANNONCE :\n${c.offre}\n\nTEXTE ACTUEL :\n${c[cible]}\n\nCONSIGNE DU CANDIDAT :\n${consigne}`;

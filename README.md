@@ -33,11 +33,21 @@ Quatre onglets : **Postuler**, **Historique**, **Profil**, **Chat**.
 3. **Retoucher** : sous la lettre ou le CV, des puces (« Plus court »…) ou une consigne libre. Claude réécrit, et si la consigne vaut pour l'avenir (ton, longueur, ce qu'il ne faut jamais dire), elle est mémorisée.
 4. **Historique** : toutes les candidatures, recherche, statut (brouillon, envoyée, réponse, entretien, refus), versions successives avec retour en arrière, suppression.
 
+### Fiche complète d'un candidat (données « en dur » en .md)
+Deux façons de donner à l'appli une fiche `.md` complète (faits vérifiés, règles de rédaction, notes) :
+- coller la fiche dans l'écran Profil, « J'ai déjà une fiche complète » ;
+- ou déposer le fichier à la main dans `data/profils/<nom>/fiche.md` : il est importé au premier chargement.
+
+Elle est découpée automatiquement : les sections « Règles de rédaction » deviennent `regles.md` (consignes impératives, injectées à chaque génération, plus fortes que l'annonce), les sections « Livrables », « Reste à confirmer », « Plan habilitation », « Prochaines étapes » et l'en-tête vont dans `notes.md` (jamais envoyées à Claude), le reste est `profil.md`. Tout ce qui est marqué « à confirmer », « inconnu » ou « supposé » n'est jamais affirmé dans une lettre ou un CV. Cette fiche contient des données personnelles : le dossier `data/` est exclu de Git, et ne la commite jamais dans ce dépôt public.
+
 ### Mémoire (fichiers `.md` sur ton ordinateur, hors Git)
 ```
 data/profils/<nom>/
   profil.md             faits du candidat, seule source de vérité
   prefs.json            réglages
+  fiche.md              fiche complète d'origine (si importée)
+  regles.md             règles de rédaction impératives
+  notes.md              notes internes, non envoyées à Claude
   preferences.md        préférences apprises des retouches (20 puces max, résumées par Claude)
   historique/<date-entreprise>/
     candidature.md      état courant : offre, score, lettre, CV

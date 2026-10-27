@@ -211,6 +211,12 @@
         <textarea id="ptexte" class="in" rows="6" style="margin-top:10px" placeholder="Ou colle ton CV et tes expériences ici"></textarea>
         <button class="btn" id="pana" style="margin-top:12px">Analyser mon CV</button>
         <div class="err" id="pErr"></div>
+        <details style="margin-top:14px">
+          <summary class="mut">J’ai déjà une fiche complète (.md)</summary>
+          <p class="mut" style="margin:8px 0">Colle la fiche telle quelle : elle est découpée automatiquement en profil, règles de rédaction et notes internes.</p>
+          <textarea id="pFicheTexte" class="in" rows="6" placeholder="# Fiche …"></textarea>
+          <button class="btn sec" id="pFiche" style="margin-top:10px">Importer la fiche</button>
+        </details>
       </div>
       <div id="pEdit" hidden>
         <div class="card">
@@ -227,6 +233,11 @@
           <label class="l" style="display:flex;align-items:center;gap:10px;margin-top:16px"><input id="rTirets" type="checkbox" style="width:22px;height:22px"> Pas de tiret long (— –)</label>
           <label class="l" for="rNotes">Consignes personnelles</label>
           <textarea id="rNotes" class="in" rows="3" maxlength="500" placeholder="Ex : toujours insister sur ma disponibilité"></textarea>
+        </div>
+        <div class="card">
+          <h2>Règles de rédaction</h2>
+          <p>Consignes impératives, appliquées à chaque lettre et chaque CV (ce qu’il ne faut jamais écrire, formulations à respecter).</p>
+          <textarea id="rRegles" class="in" rows="6" style="margin-top:12px" placeholder="Ex : ne jamais écrire que le BTS est un diplôme"></textarea>
         </div>
         <div class="card">
           <h2>Ce que l’appli a appris</h2>

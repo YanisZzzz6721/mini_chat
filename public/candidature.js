@@ -35,6 +35,7 @@
       S.id = id; store.set('pid', id); $('pid').value = id; S.profil = p;
       $('rTon').value = p.prefs.ton; $('rMax').value = p.prefs.maxChars; $('rTirets').checked = p.prefs.sansTiretLong; $('rNotes').value = p.prefs.notes || '';
       $('rApprises').value = p.apprises || ''; ajuste($('rApprises'));
+      $('rRegles').value = p.regles || ''; ajuste($('rRegles'), 140);
       if (p.existe) { $('pmd').value = p.md; montrerProfil('edit'); ajuste($('pmd'), 220); $('pEtat').textContent = silencieux ? '' : 'Profil chargé.'; }
       else { montrerProfil('import'); $('pEtat').textContent = 'Nouveau profil : importe ton CV.'; }
     } catch { $('pEtat').textContent = 'Serveur injoignable.'; }
@@ -103,10 +104,23 @@
     const id = $('pid').value.trim().toLowerCase();
     $('pOk').textContent = '';
     try {
-      const r = await api('/api/profil', { method: 'PUT', body: JSON.stringify({ id, md: $('pmd').value, prefs: prefsDuFormulaire(), apprises: $('rApprises').value }) });
+      const r = await api('/api/profil', { method: 'PUT', body: JSON.stringify({ id, md: $('pmd').value, prefs: prefsDuFormulaire(), apprises: $('rApprises').value, regles: $('rRegles').value }) });
       if (r.ok) { await chargerProfil(true); $('pOk').textContent = 'Profil enregistré ✓'; toast('Profil enregistré ✓'); }
       else $('pOk').textContent = await erreurDe(r);
     } catch { $('pOk').textContent = 'Serveur injoignable.'; }
+  };
+  $('pFiche').onclick = async () => {
+    const id = $('pid').value.trim().toLowerCase(), texte = $('pFicheTexte').value.trim();
+    $('pErr').textContent = '';
+    if (!/^[a-z0-9_-]{2,30}$/.test(id)) { $('pErr').textContent = 'Choisis d’abord un nom de profil (2 à 30 lettres ou chiffres).'; return; }
+    if (texte.length < 200) { $('pErr').textContent = 'Colle la fiche complète.'; return; }
+    $('pFiche').disabled = true;
+    try {
+      const r = await api('/api/profil/fiche', { method: 'POST', body: JSON.stringify({ id, texte }) });
+      if (!r.ok) $('pErr').textContent = await erreurDe(r);
+      else { $('pFicheTexte').value = ''; await chargerProfil(true); toast('Fiche importée ✓', 2400); }
+    } catch { $('pErr').textContent = 'Connexion perdue, réessaie.'; }
+    $('pFiche').disabled = false;
   };
   $('pnew').onclick = () => { $('ptexte').value = ''; $('pfile').value = ''; montrerProfil('import'); };
   $('pload').onclick = () => chargerProfil(false);
@@ -400,7 +414,7 @@
   window.surVue = (v) => {
     if (v === 'histo') chargerHistorique();
     if (v === 'postuler') { sousTitre(); ajuste($('offre'), 150); }
-    if (v === 'profil') { ajuste($('pmd'), 220); ajuste($('rApprises')); ajuste($('ptexte'), 140); } // mesure possible seulement quand l'écran est visible
+    if (v === 'profil') { ajuste($('pmd'), 220); ajuste($('rApprises')); ajuste($('rRegles'), 140); ajuste($('ptexte'), 140); } // mesure possible seulement quand l'écran est visible
   };
   window.initApp = () => { $('pid').value = S.id; ajuste($('offre'), 150); if (S.id) chargerProfil(true); else sousTitre(); };
 })();
