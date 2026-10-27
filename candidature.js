@@ -29,11 +29,13 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
   // Lance claude -p une fois, sans mémoire de session. onDelta reçoit le texte au fil de l'eau.
   function appel({ message, system, onDelta, res }) {
     return new Promise((resolve) => {
-      const args = ['-p', message, '--tools', '', '--setting-sources', '', '--disable-slash-commands',
+      const args = ['-p', '--tools', '', '--setting-sources', '', '--disable-slash-commands',
         '--no-session-persistence', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
         '--system-prompt', system];
       if (MODEL) args.push('--model', MODEL);
-      const child = spawn(CLAUDE_BIN, args, { cwd: SANDBOX, stdio: ['ignore', 'pipe', 'pipe'] });
+      const child = spawn(CLAUDE_BIN, args, { cwd: SANDBOX, stdio: ['pipe', 'pipe', 'pipe'] });
+      child.stdin.on('error', () => {});
+      child.stdin.end(message); // par stdin : un texte commençant par "-" ou "---" ne doit pas être pris pour une option
       let buf = '', texte = '', stderr = '', fini = false;
       const fin = (r) => { if (!fini) { fini = true; resolve(r); } };
       res.on('close', () => { if (!fini) child.kill('SIGTERM'); });

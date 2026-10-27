@@ -107,7 +107,7 @@ async function chat(req, res) {
   // resume=true : reprend une conversation existante ; false : en crée une avec cet identifiant.
   // Si l'état connu est faux (ex. le serveur a redémarré), on retente une fois dans l'autre mode.
   function run(resume, canRetry) {
-    const args = ['-p', message,
+    const args = ['-p',
       '--tools', '',
       '--setting-sources', '',
       '--disable-slash-commands',
@@ -116,7 +116,9 @@ async function chat(req, res) {
     if (MODEL) args.push('--model', MODEL);
     args.push(resume ? '--resume' : '--session-id', body.sessionId);
 
-    child = spawn(CLAUDE_BIN, args, { cwd: SANDBOX, stdio: ['ignore', 'pipe', 'pipe'] });
+    child = spawn(CLAUDE_BIN, args, { cwd: SANDBOX, stdio: ['pipe', 'pipe', 'pipe'] });
+    child.stdin.on('error', () => {});
+    child.stdin.end(message); // par stdin : un message commençant par "-" ne doit pas être pris pour une option
     let buf = '', stderr = '', sent = false;
 
     child.stdout.on('data', (d) => {
