@@ -155,10 +155,8 @@ const TYPES = { '.js': 'text/javascript; charset=utf-8', '.html': 'text/html; ch
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'POST' && url.pathname === '/api/chat') return chat(req, res);
-  if (url.pathname.startsWith('/api/profil') || url.pathname === '/api/candidature') {
-    const h = candidature[req.method + ' ' + url.pathname];
-    if (h) return h(req, res, url);
-  }
+  const route = candidature[req.method + ' ' + url.pathname];
+  if (route) return route(req, res, url);
   if (req.method === 'GET' && url.pathname === '/api/ping') { if (auth(req, res)) json(res, 200, { ok: true }); return; }
   if (req.method !== 'GET') return json(res, 405, { error: 'Méthode non autorisée.' });
   const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);

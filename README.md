@@ -25,12 +25,27 @@ Le terminal affiche un lien `https://xxxx.trycloudflare.com` : envoie-le avec le
 ## Sur l'iPhone
 Ouvrir le lien dans **Safari** → Partager → **Sur l'écran d'accueil**. L'appli s'ouvre ensuite en plein écran. Si le lien change, refais l'ajout.
 
-## Onglet Candidature (lettre + CV depuis une offre)
-1. **Profil** : saisir un nom de profil (ex : `anass`, toujours le même), importer son CV (PDF, Word ou texte) ou le coller. Claude le transforme en profil structuré que le candidat relit, corrige et enregistre. Réglages d'écriture : ton, longueur max de la lettre (1500 par défaut), pas de tiret long, consignes perso.
-2. **Offre** : coller le texte de l'annonce Indeed, puis « Générer ».
-3. **Résultat** : score de compatibilité avec mots-clés trouvés / manquants, lettre (copier ou .docx), CV adapté (copier ou PDF). Les textes restent modifiables avant copie ou export.
+## Application Postuler (mobile)
+Quatre onglets : **Postuler**, **Historique**, **Profil**, **Chat**.
 
-Garde-fous : seuls les faits du profil sont utilisés (rien d'inventé), les tirets longs et le dépassement de longueur sont corrigés côté serveur. Les profils sont stockés dans `data/profils/` sur ton ordinateur, exclus de Git. Toute personne qui a le code d'accès et connaît un nom de profil peut le lire : ne partage le code qu'avec des gens de confiance. Les prompts sont dans `prompt-profil.md` et `prompt-candidature.md`.
+1. **Profil** (une seule fois) : nom de profil (ex : `anass`), import du CV (PDF, Word, texte ou collé), relecture du profil structuré, réglages d'écriture (ton, longueur max, pas de tiret long).
+2. **Postuler** : coller l'annonce Indeed, « Générer ». Résultat en plein écran : lettre, CV adapté, score avec mots-clés manquants, annonce. Boutons **Copier** (priorité) et téléchargement (lettre .docx, CV PDF).
+3. **Retoucher** : sous la lettre ou le CV, des puces (« Plus court »…) ou une consigne libre. Claude réécrit, et si la consigne vaut pour l'avenir (ton, longueur, ce qu'il ne faut jamais dire), elle est mémorisée.
+4. **Historique** : toutes les candidatures, recherche, statut (brouillon, envoyée, réponse, entretien, refus), versions successives avec retour en arrière, suppression.
+
+### Mémoire (fichiers `.md` sur ton ordinateur, hors Git)
+```
+data/profils/<nom>/
+  profil.md             faits du candidat, seule source de vérité
+  prefs.json            réglages
+  preferences.md        préférences apprises des retouches (20 puces max, résumées par Claude)
+  historique/<date-entreprise>/
+    candidature.md      état courant : offre, score, lettre, CV
+    versions/vNNN-*.md  une version par changement
+```
+Chaque nouvelle lettre reçoit : le profil, `preferences.md`, et les 3 lettres passées les plus proches de l'offre (pour le ton). Le reste de l'historique reste sur disque et n'est pas envoyé à Claude, donc rien ne grossit. Ces dossiers sont lisibles et modifiables à la main, par exemple dans Obsidian.
+
+Garde-fous : seuls les faits du profil sont utilisés (rien d'inventé) ; tirets longs et dépassement de longueur sont corrigés côté serveur. Toute personne qui a le code d'accès et connaît un nom de profil peut le lire : ne partage le code qu'avec des gens de confiance. Prompts modifiables : `prompt-profil.md`, `prompt-candidature.md`, `prompt-retouche.md`, `prompt-preferences.md`.
 
 ## Personnaliser l'assistant
 Édite `prompt-systeme.md` (rôle, ton, limites). Pris en compte à chaque message, sans relancer.

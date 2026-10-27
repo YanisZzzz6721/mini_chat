@@ -5,243 +5,300 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Assistant">
-<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-title" content="Postuler">
+<meta name="theme-color" content="#0b0d12">
+<meta name="format-detection" content="telephone=no">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-512.png">
-<title>Assistant</title>
+<title>Postuler</title>
 <style>
-  :root { --bg:#0f1115; --card:#1a1d24; --me:#6c8cff; --txt:#e8eaf0; --mut:#8a90a0; }
-  * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; background: var(--bg); color: var(--txt);
-    font: 16px/1.45 -apple-system, system-ui, sans-serif; }
-  #app { display: flex; flex-direction: column; height: 100dvh; padding-top: env(safe-area-inset-top); }
-  header { padding: 12px 16px; font-weight: 600; border-bottom: 1px solid #23262f; display: flex; justify-content: space-between; align-items: center; }
-  header button { background: none; border: 0; color: var(--mut); font-size: 14px; }
-  #log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; -webkit-overflow-scrolling: touch; }
-  .m { max-width: 85%; padding: 10px 14px; border-radius: 18px; white-space: pre-wrap; word-wrap: break-word; }
-  .u { align-self: flex-end; background: var(--me); color: #fff; border-bottom-right-radius: 6px; }
-  .a { align-self: flex-start; background: var(--card); border-bottom-left-radius: 6px; }
-  .e { align-self: center; color: #ff8b8b; font-size: 14px; }
-  form { display: flex; gap: 8px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid #23262f; }
-  textarea { flex: 1; resize: none; max-height: 120px; background: var(--card); color: var(--txt); border: 0; border-radius: 20px; padding: 10px 14px; font: inherit; }
-  #send { background: var(--me); color: #fff; border: 0; border-radius: 50%; width: 44px; height: 44px; font-size: 20px; }
-  #send:disabled { opacity: .4; }
-  #login { display: none; margin: auto; padding: 24px; width: min(360px, 100%); text-align: center; }
-  #login input { width: 100%; padding: 12px; border-radius: 12px; border: 0; background: var(--card); color: var(--txt); font-size: 16px; text-align: center; }
-  #login button { margin-top: 12px; width: 100%; padding: 12px; border: 0; border-radius: 12px; background: var(--me); color: #fff; font-size: 16px; }
-  #main { display: none; flex: 1; min-height: 0; flex-direction: column; }
-  #tabs { display: flex; gap: 6px; padding: 8px 12px 0; }
-  #tabs button { flex: 1; padding: 9px; border: 0; border-radius: 12px; background: var(--card); color: var(--mut); font: inherit; font-size: 15px; }
-  #tabs button.on { background: var(--me); color: #fff; }
-  #chatView { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-  #candView { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 40px; display: none; -webkit-overflow-scrolling: touch; }
-  .panel { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
-  .panel h2 { margin: 0 0 8px; font-size: 17px; }
-  .panel p, .mut { color: var(--mut); font-size: 14px; margin: 6px 0; }
-  .panel label { display: block; font-size: 14px; color: var(--mut); margin: 10px 0 4px; }
-  .panel input[type=text], .panel input[type=number], .panel select, .panel textarea.f { width: 100%; padding: 10px 12px; border: 0; border-radius: 12px; background: #11141a; color: var(--txt); font: inherit; font-size: 16px; }
-  .panel textarea.f { resize: vertical; min-height: 90px; max-height: none; }
-  .btn { margin-top: 10px; padding: 11px 16px; border: 0; border-radius: 12px; background: var(--me); color: #fff; font: inherit; font-size: 15px; }
-  .btn.ghost { background: #2a2e38; }
-  .btn:disabled { opacity: .45; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .err { color: #ff8b8b; font-size: 14px; margin-top: 8px; min-height: 1em; }
-  .ok { color: #7ddc9b; font-size: 14px; }
-  .bar { height: 10px; border-radius: 6px; background: #11141a; overflow: hidden; margin: 8px 0; }
-  .bar > div { height: 100%; background: var(--me); width: 0; transition: width .4s; }
-  .chip { display: inline-block; padding: 3px 10px; margin: 3px 4px 0 0; border-radius: 12px; background: #11141a; font-size: 13px; }
-  .chip.no { color: #ffb4b4; }
-  .chip.yes { color: #9be3b4; }
-  .cnt { font-size: 13px; color: var(--mut); }
-  .cnt.over { color: #ff8b8b; }
-  details summary { color: var(--mut); font-size: 14px; margin-top: 10px; }
-  [hidden] { display: none !important; }
-  #loginErr { color: #ff8b8b; min-height: 1.4em; margin-top: 8px; font-size: 14px; }
+  :root {
+    --bg:#0b0d12; --surface:#141821; --surface2:#1b2030; --line:rgba(255,255,255,.07);
+    --txt:#eef0f6; --mut:#8f97aa; --acc1:#6c8cff; --acc2:#9b6bff; --ok:#5ad19a; --warn:#ffb36b; --bad:#ff7b8a;
+    --grad:linear-gradient(135deg,var(--acc1),var(--acc2));
+    --top:env(safe-area-inset-top); --bot:env(safe-area-inset-bottom);
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { height:100%; margin:0; background:var(--bg); color:var(--txt); overscroll-behavior:none;
+    font:16px/1.45 -apple-system,system-ui,"SF Pro Text",sans-serif; -webkit-font-smoothing:antialiased; }
+  button,input,textarea,select { font:inherit; color:inherit; touch-action:manipulation; }
+  button { border:0; cursor:pointer; }
+  [hidden] { display:none !important; }
+
+  /* ---- squelette ---- */
+  #main { position:fixed; inset:0; display:none; flex-direction:column; }
+  #views { flex:1; min-height:0; position:relative; }
+  .view { position:absolute; inset:0; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior:contain;
+    padding:calc(var(--top) + 14px) 16px 24px; }
+  .view > h1 { font-size:28px; letter-spacing:-.02em; margin:6px 2px 14px; }
+  .sub { color:var(--mut); font-size:14px; margin:-8px 2px 14px; }
+
+  /* ---- barre du bas ---- */
+  #nav { display:flex; padding:6px 8px calc(6px + var(--bot)); background:rgba(11,13,18,.82); border-top:1px solid var(--line);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
+  #nav button { flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 0; background:none; color:var(--mut); font-size:11px; font-weight:500; border-radius:14px; }
+  #nav button svg { width:24px; height:24px; stroke:currentColor; fill:none; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+  #nav button.on { color:#fff; }
+  #nav button.on svg { stroke:url(#g); }
+  #nav button.on span { background:var(--grad); -webkit-background-clip:text; background-clip:text; color:transparent; }
+
+  /* ---- cartes, champs, boutons ---- */
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:20px; padding:16px; margin-bottom:12px; }
+  .card h2 { font-size:17px; margin:0 0 4px; letter-spacing:-.01em; }
+  .card p,.mut { color:var(--mut); font-size:14px; margin:4px 0 0; }
+  label.l { display:block; font-size:13px; color:var(--mut); margin:14px 0 6px; font-weight:500; }
+  .in { width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:14px; background:var(--surface2); color:var(--txt); font-size:16px; outline:none; }
+  .in:focus { border-color:var(--acc1); }
+  textarea.in { resize:none; line-height:1.5; display:block; }
+  .btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; min-height:52px; padding:0 18px; border-radius:16px; background:var(--grad); color:#fff; font-weight:600; font-size:16px;
+    box-shadow:0 8px 24px -10px rgba(108,140,255,.7); transition:transform .12s, opacity .2s; }
+  .btn:active { transform:scale(.98); }
+  .btn:disabled { opacity:.45; box-shadow:none; }
+  .btn.sec { background:var(--surface2); box-shadow:none; color:var(--txt); border:1px solid var(--line); }
+  .btn.small { min-height:44px; width:auto; font-size:15px; border-radius:14px; padding:0 16px; }
+  .row { display:flex; gap:10px; }
+  .err { color:var(--bad); font-size:14px; margin-top:10px; min-height:1em; }
+  .okm { color:var(--ok); font-size:14px; margin-top:10px; }
+  .pill { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:20px; background:var(--surface2); font-size:13px; color:var(--mut); }
+  .pill.ok { color:var(--ok); } .pill.warn { color:var(--warn); }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding:2px 0; scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chip { flex:none; padding:8px 14px; border-radius:20px; background:var(--surface2); border:1px solid var(--line); font-size:14px; color:var(--txt); }
+  .tag { display:inline-block; padding:3px 10px; margin:3px 5px 0 0; border-radius:12px; font-size:13px; background:var(--surface2); }
+  .tag.yes { color:#9be3b4; } .tag.no { color:#ffb4b4; }
+
+  /* ---- écran Postuler ---- */
+  .steps { margin-top:14px; }
+  .step { display:flex; align-items:center; gap:10px; padding:7px 0; color:var(--mut); font-size:15px; }
+  .step i { width:22px; height:22px; border-radius:50%; border:2px solid var(--surface2); flex:none; display:grid; place-items:center; font-style:normal; font-size:13px; }
+  .step.run { color:var(--txt); } .step.run i { border-color:var(--acc1); border-top-color:transparent; animation:spin .8s linear infinite; }
+  .step.done { color:var(--txt); } .step.done i { background:var(--ok); border-color:var(--ok); color:#0b0d12; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ---- historique ---- */
+  .item { display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:14px; margin-bottom:10px; }
+  .item .t { flex:1; min-width:0; }
+  .item b { display:block; font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .item small { display:block; color:var(--mut); font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+  .badge { flex:none; width:46px; height:46px; border-radius:14px; display:grid; place-items:center; font-weight:700; font-size:16px; background:var(--surface2); }
+  .badge.hi { color:var(--ok); } .badge.mid { color:var(--warn); } .badge.lo { color:var(--bad); }
+  .st { display:inline-block; margin-top:5px; padding:2px 9px; border-radius:10px; font-size:12px; background:var(--surface2); color:var(--mut); }
+  .st.entretien { color:var(--ok); } .st.reponse { color:var(--acc1); } .st.refus { color:var(--bad); } .st.envoyee { color:var(--warn); }
+  .empty { text-align:center; color:var(--mut); padding:50px 20px; }
+  .empty b { display:block; color:var(--txt); font-size:18px; margin-bottom:6px; }
+
+  /* ---- écran résultat (plein écran) ---- */
+  .sheet { position:fixed; inset:0; z-index:20; background:var(--bg); display:flex; flex-direction:column; transform:translateY(0); animation:up .25s ease; }
+  @keyframes up { from { transform:translateY(24px); opacity:0; } to { transform:none; opacity:1; } }
+  .sbar { display:flex; align-items:center; gap:10px; padding:calc(var(--top) + 8px) 12px 8px; }
+  .icon { width:42px; height:42px; border-radius:14px; background:var(--surface2); display:grid; place-items:center; flex:none; }
+  .icon svg { width:22px; height:22px; stroke:var(--txt); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .stitle { flex:1; min-width:0; }
+  .stitle b { display:block; font-size:17px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .stitle span { display:block; font-size:13px; color:var(--mut); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .seg { display:flex; margin:4px 12px 10px; padding:4px; background:var(--surface); border-radius:14px; border:1px solid var(--line); }
+  .seg button { flex:1; padding:9px 0; border-radius:10px; background:none; color:var(--mut); font-size:14px; font-weight:600; }
+  .seg button.on { background:var(--surface2); color:var(--txt); }
+  .sbody { flex:1; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; padding:0 12px 12px; display:flex; flex-direction:column; }
+  .pane { display:flex; flex-direction:column; flex:1; min-height:0; }
+  .pane > textarea { flex:1; min-height:240px; }
+  .cnt { font-size:13px; color:var(--mut); margin:8px 4px 0; text-align:right; }
+  .cnt.over { color:var(--bad); }
+  .bar { height:10px; border-radius:6px; background:var(--surface2); overflow:hidden; margin:12px 0 8px; }
+  .bar > div { height:100%; background:var(--grad); width:0; transition:width .5s; border-radius:6px; }
+  .sfoot { padding:8px 12px calc(10px + var(--bot)); border-top:1px solid var(--line); background:rgba(11,13,18,.92); }
+  .ret { display:flex; gap:8px; margin-top:8px; }
+  .ret input { flex:1; min-width:0; }
+  .ret button { width:48px; border-radius:14px; background:var(--surface2); display:grid; place-items:center; flex:none; }
+  .ret button svg { width:20px; height:20px; stroke:var(--acc1); fill:none; stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; }
+  .ver { display:flex; align-items:center; gap:10px; padding:11px 0; border-bottom:1px solid var(--line); font-size:14px; }
+  .ver:last-child { border:0; }
+  .ver .t { flex:1; min-width:0; } .ver small { display:block; color:var(--mut); }
+  .ver button { padding:7px 12px; border-radius:12px; background:var(--surface2); font-size:13px; }
+
+  /* ---- menus du bas, toast ---- */
+  #scrim { position:fixed; inset:0; z-index:40; background:rgba(0,0,0,.55); display:flex; align-items:flex-end; animation:fade .2s; }
+  @keyframes fade { from { opacity:0; } }
+  #menu { width:100%; background:var(--surface); border-radius:24px 24px 0 0; padding:10px 14px calc(14px + var(--bot)); animation:up .22s ease; }
+  #menu h3 { margin:10px 4px 8px; font-size:15px; color:var(--mut); font-weight:500; }
+  #menu button { display:block; width:100%; text-align:left; padding:15px 14px; border-radius:14px; background:none; font-size:17px; }
+  #menu button:active, #menu button.cur { background:var(--surface2); }
+  #menu button.danger { color:var(--bad); }
+  #toast { position:fixed; left:50%; bottom:calc(86px + var(--bot)); transform:translate(-50%,20px); z-index:50; padding:11px 18px; border-radius:20px; background:#232a3d; border:1px solid var(--line); font-size:15px; opacity:0; pointer-events:none; transition:.25s; max-width:90vw; text-align:center; }
+  #toast.on { opacity:1; transform:translate(-50%,0); }
+
+  /* ---- chat ---- */
+  #v-chat { display:flex; flex-direction:column; padding:0; overflow:hidden; }
+  #chatTop { display:flex; align-items:center; justify-content:space-between; padding:calc(var(--top) + 14px) 16px 8px; }
+  #chatTop h1 { font-size:28px; letter-spacing:-.02em; margin:0; }
+  #chatTop button { background:none; color:var(--acc1); font-size:15px; }
+  #log { flex:1; min-height:0; overflow-y:auto; padding:8px 14px; display:flex; flex-direction:column; gap:10px; -webkit-overflow-scrolling:touch; }
+  .m { max-width:85%; padding:10px 14px; border-radius:20px; white-space:pre-wrap; word-wrap:break-word; }
+  .m.u { align-self:flex-end; background:var(--grad); color:#fff; border-bottom-right-radius:6px; }
+  .m.a { align-self:flex-start; background:var(--surface); border:1px solid var(--line); border-bottom-left-radius:6px; }
+  .m.e { align-self:center; color:var(--bad); font-size:14px; }
+  #form { display:flex; gap:8px; padding:8px 12px 10px; }
+  #form textarea { flex:1; max-height:120px; border-radius:22px; padding:11px 16px; }
+  #send { width:46px; height:46px; border-radius:50%; background:var(--grad); color:#fff; font-size:20px; align-self:flex-end; }
+  #send:disabled { opacity:.4; }
+
+  /* ---- connexion ---- */
+  #login { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; padding:24px; text-align:center; }
+  .logo { width:76px; height:76px; border-radius:24px; background:var(--grad); display:grid; place-items:center; margin-bottom:18px; box-shadow:0 16px 40px -12px rgba(108,140,255,.8); font-size:34px; }
+  #login h1 { margin:0 0 6px; font-size:26px; }
+  #login .in { text-align:center; margin:22px 0 12px; max-width:340px; }
+  #login .btn { max-width:340px; }
 </style>
 </head>
 <body>
-<div id="app">
-  <header><span>Assistant</span><button id="reset">Nouvelle discussion</button></header>
-  <div id="login">
-    <p>Entre ton code d’accès</p>
-    <input id="code" type="password" autocomplete="off" autocapitalize="off" placeholder="Code">
-    <button id="go">Entrer</button>
-    <div id="loginErr"></div>
-  </div>
-  <div id="main">
-    <div id="tabs"><button id="tChat" class="on">Chat</button><button id="tCand">Candidature</button></div>
-    <section id="chatView">
+<svg width="0" height="0" style="position:absolute"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6c8cff"/><stop offset="1" stop-color="#9b6bff"/></linearGradient></defs></svg>
+
+<div id="login">
+  <div class="logo">✍️</div>
+  <h1>Postuler</h1>
+  <div class="mut">Entre ton code d’accès</div>
+  <input id="code" class="in" type="password" autocomplete="off" autocapitalize="off" placeholder="Code">
+  <button class="btn" id="go">Entrer</button>
+  <div class="err" id="loginErr"></div>
+</div>
+
+<div id="main">
+  <div id="views">
+
+    <section class="view" id="v-postuler">
+      <h1>Nouvelle candidature</h1>
+      <div class="sub" id="pSub"></div>
+      <div class="card" id="pCompose">
+        <h2>L’annonce</h2>
+        <p>Copie le texte de l’offre sur Indeed, puis colle-le ici.</p>
+        <textarea id="offre" class="in" rows="7" style="margin-top:12px" placeholder="Colle l’annonce ici…"></textarea>
+        <div class="row" style="margin-top:12px">
+          <button class="btn sec small" id="coller" style="flex:1">Coller</button>
+          <button class="btn sec small" id="vider" style="flex:none">Effacer</button>
+        </div>
+        <button class="btn" id="gen" style="margin-top:12px">Générer ma candidature</button>
+        <div class="err" id="gErr"></div>
+      </div>
+      <div class="card" id="pSteps" hidden>
+        <h2 id="pStepsT">Je prépare ta candidature</h2>
+        <div class="steps">
+          <div class="step" data-s="META"><i></i>Lecture de l’annonce</div>
+          <div class="step" data-s="SCORE"><i></i>Calcul de la compatibilité</div>
+          <div class="step" data-s="LETTRE"><i></i>Rédaction de la lettre</div>
+          <div class="step" data-s="CV"><i></i>Adaptation du CV</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="v-histo" hidden>
+      <h1>Historique</h1>
+      <input id="hq" class="in" type="search" placeholder="Rechercher (entreprise, poste, mot-clé)" style="margin-bottom:14px">
+      <div id="hListe"></div>
+    </section>
+
+    <section class="view" id="v-profil" hidden>
+      <h1>Mon profil</h1>
+      <div class="card">
+        <h2>Nom du profil</h2>
+        <p>Toujours le même (ex : anass). Il retrouve ton profil et ton historique.</p>
+        <div class="row" style="margin-top:12px"><input id="pid" class="in" type="text" autocapitalize="off" autocomplete="off" autocorrect="off" style="flex:1"><button class="btn sec small" id="pload">Charger</button></div>
+        <div class="mut" id="pEtat" style="margin-top:8px"></div>
+      </div>
+      <div class="card" id="pImport" hidden>
+        <h2>Importer mon CV</h2>
+        <p>PDF, Word ou texte. Tu peux aussi le coller ci-dessous.</p>
+        <input id="pfile" type="file" accept=".pdf,.docx,.txt,.md" class="in" style="margin-top:12px">
+        <textarea id="ptexte" class="in" rows="6" style="margin-top:10px" placeholder="Ou colle ton CV et tes expériences ici"></textarea>
+        <button class="btn" id="pana" style="margin-top:12px">Analyser mon CV</button>
+        <div class="err" id="pErr"></div>
+      </div>
+      <div id="pEdit" hidden>
+        <div class="card">
+          <h2>Mon profil</h2>
+          <p>Les lettres et CV s’appuient uniquement sur ce texte. Corrige ce qui est faux.</p>
+          <textarea id="pmd" class="in" rows="14" style="margin-top:12px"></textarea>
+        </div>
+        <div class="card">
+          <h2>Réglages d’écriture</h2>
+          <label class="l" for="rTon">Ton</label>
+          <select id="rTon" class="in"><option value="professionnel">Professionnel</option><option value="chaleureux">Chaleureux</option><option value="direct">Direct</option></select>
+          <label class="l" for="rMax">Longueur max de la lettre (caractères)</label>
+          <input id="rMax" class="in" type="number" inputmode="numeric" min="500" max="3000" step="100">
+          <label class="l" style="display:flex;align-items:center;gap:10px;margin-top:16px"><input id="rTirets" type="checkbox" style="width:22px;height:22px"> Pas de tiret long (— –)</label>
+          <label class="l" for="rNotes">Consignes personnelles</label>
+          <textarea id="rNotes" class="in" rows="3" maxlength="500" placeholder="Ex : toujours insister sur ma disponibilité"></textarea>
+        </div>
+        <div class="card">
+          <h2>Ce que l’appli a appris</h2>
+          <p>Mémorisé à partir de tes retouches, et appliqué aux prochaines lettres. Modifie ou efface ce que tu veux.</p>
+          <textarea id="rApprises" class="in" rows="5" style="margin-top:12px" placeholder="Rien pour l’instant. Utilise « Retoucher » sur une lettre."></textarea>
+        </div>
+        <button class="btn" id="psave">Enregistrer</button>
+        <div id="pOk" class="okm"></div>
+        <button class="btn sec" id="pnew" style="margin-top:12px">Réimporter un CV</button>
+      </div>
+    </section>
+
+    <section class="view" id="v-chat" hidden>
+      <div id="chatTop"><h1>Chat</h1><button id="reset">Nouvelle discussion</button></div>
       <div id="log"></div>
       <form id="form">
-        <textarea id="msg" rows="1" placeholder="Écris ton message…" enterkeyhint="send"></textarea>
+        <textarea id="msg" class="in" rows="1" placeholder="Écris ton message…" enterkeyhint="send"></textarea>
         <button id="send" type="submit" aria-label="Envoyer">↑</button>
       </form>
     </section>
-    <section id="candView">
-      <div class="panel">
-        <h2>1. Mon profil</h2>
-        <label for="pid">Nom du profil (le même à chaque fois, ex : anass)</label>
-        <div class="row"><input id="pid" type="text" autocapitalize="off" autocomplete="off" style="flex:1"><button class="btn ghost" id="pload" style="margin:0">Charger</button></div>
-        <div id="pEtat" class="mut"></div>
-        <div id="pImport" hidden>
-          <p>Importe ton CV (PDF, Word ou texte), ou colle-le ci-dessous avec tes expériences.</p>
-          <input id="pfile" type="file" accept=".pdf,.docx,.txt,.md" class="mut">
-          <label for="ptexte">Ou colle ton CV / tes expériences</label>
-          <textarea id="ptexte" class="f" rows="6"></textarea>
-          <button class="btn" id="pana">Analyser mon CV</button>
-          <div class="err" id="pErr"></div>
-        </div>
-        <div id="pEdit" hidden>
-          <p>Relis ton profil et corrige ce qui est faux. Les lettres et CV s’appuient uniquement sur ce texte.</p>
-          <textarea id="pmd" class="f" rows="14"></textarea>
-          <details>
-            <summary>Réglages d’écriture</summary>
-            <label for="rTon">Ton</label>
-            <select id="rTon"><option value="professionnel">Professionnel</option><option value="chaleureux">Chaleureux</option><option value="direct">Direct</option></select>
-            <label for="rMax">Longueur max de la lettre (caractères)</label>
-            <input id="rMax" type="number" min="500" max="3000" step="100">
-            <label><input id="rTirets" type="checkbox"> Pas de tiret long (— –)</label>
-            <label for="rNotes">Consignes personnelles (optionnel)</label>
-            <textarea id="rNotes" class="f" rows="3" maxlength="500" placeholder="Ex : toujours insister sur ma disponibilité, ne pas mentionner mes études"></textarea>
-          </details>
-          <div class="row"><button class="btn" id="psave">Enregistrer</button><button class="btn ghost" id="pnew">Réimporter un CV</button></div>
-          <div id="pOk" class="ok"></div>
-        </div>
+  </div>
+
+  <nav id="nav">
+    <button data-v="postuler" class="on"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg><span>Postuler</span></button>
+    <button data-v="histo"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Historique</span></button>
+    <button data-v="profil"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span>Profil</span></button>
+    <button data-v="chat"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 01-11.5 7.2L3 21l1.8-5.5A8 8 0 1121 12z"/></svg><span>Chat</span></button>
+  </nav>
+</div>
+
+<!-- écran résultat (après génération ou depuis l'historique) -->
+<div class="sheet" id="res" hidden>
+  <div class="sbar">
+    <button class="icon" id="rBack" aria-label="Retour"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></button>
+    <div class="stitle"><b id="rTitre">Candidature</b><span id="rSous"></span></div>
+    <button class="pill" id="rStatut">Brouillon ▾</button>
+    <button class="icon" id="rPlus" aria-label="Plus"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button>
+  </div>
+  <div class="seg" id="rSeg">
+    <button data-t="lettre" class="on">Lettre</button><button data-t="cv">CV</button><button data-t="score">Score</button><button data-t="plus">Offre</button>
+  </div>
+  <div class="sbody">
+    <div class="pane" data-p="lettre"><textarea id="rLettre" class="in"></textarea><div class="cnt" id="rCnt"></div></div>
+    <div class="pane" data-p="cv" hidden><textarea id="rCv" class="in"></textarea></div>
+    <div class="pane" data-p="score" hidden>
+      <div class="card"><h2 id="rScoreT">Compatibilité</h2><div class="bar"><div id="rBar"></div></div>
+        <div id="rOk"></div><div id="rNo"></div><p id="rConseil"></p></div>
+    </div>
+    <div class="pane" data-p="plus" hidden>
+      <div class="card"><h2>Annonce</h2><textarea id="rOffre" class="in" rows="8" readonly style="margin-top:10px"></textarea></div>
+      <div class="card"><h2>Versions</h2><p>Chaque changement est gardé. Tu peux revenir en arrière.</p><div id="rVers" style="margin-top:6px"></div></div>
+    </div>
+  </div>
+  <div class="sfoot" id="rFoot">
+    <div id="rRetoucheBloc">
+      <div class="chips" id="rQuick">
+        <button class="chip">Plus court</button><button class="chip">Plus chaleureux</button><button class="chip">Plus direct</button><button class="chip">Insister sur ma disponibilité</button>
       </div>
-      <div class="panel">
-        <h2>2. Offre d’emploi</h2>
-        <textarea id="offre" class="f" rows="7" placeholder="Colle ici le texte complet de l’annonce Indeed"></textarea>
-        <button class="btn" id="gen">Générer ma candidature</button>
-        <div class="err" id="gErr"></div>
-      </div>
-      <div id="res" hidden>
-        <div class="panel">
-          <h2 id="rMeta">Compatibilité</h2>
-          <div class="bar"><div id="rBar"></div></div>
-          <div id="rScore" class="mut"></div>
-          <div id="rOk"></div><div id="rNo"></div>
-          <p id="rConseil"></p>
-        </div>
-        <div class="panel">
-          <h2>Lettre de motivation</h2>
-          <textarea id="rLettre" class="f" rows="12"></textarea>
-          <div class="cnt" id="rCnt"></div>
-          <div class="row"><button class="btn" id="cpL">Copier</button><button class="btn ghost" id="dlL">Télécharger .docx</button></div>
-        </div>
-        <div class="panel">
-          <h2>CV adapté</h2>
-          <textarea id="rCv" class="f" rows="14"></textarea>
-          <div class="row"><button class="btn" id="cpC">Copier</button><button class="btn ghost" id="dlC">Télécharger PDF</button></div>
-        </div>
-      </div>
-    </section>
+      <div class="ret"><input id="rInstr" class="in" type="text" placeholder="Retoucher… (ex : parle de mon expérience en caisse)" enterkeyhint="send"><button id="rEnvoi" aria-label="Retoucher"><svg viewBox="0 0 24 24"><path d="M5 12l14-7-5 14-2-6z"/></svg></button></div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="rCopier">Copier la lettre</button><button class="btn sec" id="rExport" style="width:56px;flex:none" aria-label="Télécharger"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></button></div>
   </div>
 </div>
+
+<div id="scrim" hidden><div id="menu"></div></div>
+<div id="toast"></div>
+
 <script src="/vendor/jszip.min.js"></script>
 <script src="/vendor/pdf.min.js"></script>
 <script src="/vendor/docx.umd.js"></script>
 <script src="/vendor/jspdf.umd.min.js"></script>
-<script>
-const $ = (id) => document.getElementById(id);
-const store = {
-  get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
-  set: (k, v) => { try { localStorage.setItem(k, v); } catch {} },
-  del: (k) => { try { localStorage.removeItem(k); } catch {} },
-};
-let code = store.get('code');
-let sessionId = store.get('sid');
-const newSid = () => { sessionId = crypto.randomUUID(); store.set('sid', sessionId); };
-if (!sessionId) newSid();
-let busy = false;
-
-function add(cls, text) {
-  const d = document.createElement('div');
-  d.className = 'm ' + cls; d.textContent = text;
-  $('log').appendChild(d); $('log').scrollTop = $('log').scrollHeight;
-  return d;
-}
-
-function showLogin(show) {
-  $('login').style.display = show ? 'block' : 'none';
-  $('main').style.display = show ? 'none' : 'flex';
-}
-
-function setTab(nom) {
-  const cand = nom === 'cand';
-  $('chatView').style.display = cand ? 'none' : 'flex';
-  $('candView').style.display = cand ? 'block' : 'none';
-  $('tChat').classList.toggle('on', !cand);
-  $('tCand').classList.toggle('on', cand);
-  $('reset').style.visibility = cand ? 'hidden' : 'visible';
-  if (cand && window.initCandidature) window.initCandidature();
-}
-$('tChat').onclick = () => setTab('chat');
-$('tCand').onclick = () => setTab('cand');
-
-async function checkCode(c) {
-  const r = await fetch('/api/ping', { headers: { 'x-code': c } });
-  return r.ok;
-}
-
-$('go').onclick = async () => {
-  const c = $('code').value;
-  $('loginErr').textContent = '';
-  try {
-    if (await checkCode(c)) { code = c; store.set('code', c); showLogin(false); }
-    else $('loginErr').textContent = 'Code incorrect.';
-  } catch { $('loginErr').textContent = 'Serveur injoignable.'; }
-};
-$('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('go').click(); });
-
-$('reset').onclick = () => { newSid(); $('log').innerHTML = ''; };
-
-$('msg').addEventListener('input', (e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; });
-
-$('form').onsubmit = async (e) => {
-  e.preventDefault();
-  const text = $('msg').value.trim();
-  if (!text || busy) return;
-  busy = true; $('send').disabled = true;
-  $('msg').value = ''; $('msg').style.height = 'auto';
-  add('u', text);
-  const bubble = add('a', '…');
-  let got = false;
-  try {
-    const r = await fetch('/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-code': code },
-      body: JSON.stringify({ message: text, sessionId }),
-    });
-    if (!r.ok) {
-      const j = await r.json().catch(() => ({}));
-      if (r.status === 401) { store.del('code'); showLogin(true); }
-      bubble.remove(); add('e', j.error || 'Erreur.');
-    } else {
-      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += dec.decode(value, { stream: true });
-        let i;
-        while ((i = buf.indexOf('\n\n')) >= 0) {
-          const line = buf.slice(0, i); buf = buf.slice(i + 2);
-          if (!line.startsWith('data: ')) continue;
-          const ev = JSON.parse(line.slice(6));
-          if (ev.t === 'delta') { if (!got) { bubble.textContent = ''; got = true; } bubble.textContent += ev.text; $('log').scrollTop = $('log').scrollHeight; }
-          else if (ev.t === 'error') { if (!got) bubble.remove(); add('e', ev.message); }
-        }
-      }
-    }
-  } catch { bubble.remove(); add('e', 'Connexion perdue, réessaie.'); }
-  busy = false; $('send').disabled = false; $('msg').focus();
-};
-
-(async () => {
-  if (!code) return showLogin(true);
-  try { showLogin(!(await checkCode(code))); } catch { showLogin(false); }
-})();
-</script>
+<script src="/app.js"></script>
 <script src="/candidature.js"></script>
 </body>
 </html>
