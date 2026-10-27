@@ -22,6 +22,9 @@ cd mini_chat
 ```
 Le terminal affiche un lien `https://xxxx.trycloudflare.com` : envoie-le avec le code d'accès. Le lien change à chaque lancement. `Ctrl+C` coupe tout.
 
+## Si le lien ne marche plus
+Les tunnels gratuits Cloudflare n'ont aucune garantie : ils coupent quand le Mac s'endort ou que le réseau saute, et Cloudflare peut les supprimer (`Tunnel not found` dans le terminal). `lancer.sh` le détecte, recrée le tunnel et affiche un **nouveau** « LIEN À ENVOYER » : il faut renvoyer ce lien à la personne (l'ancien est mort). Pour garder un lien fixe, il faut un tunnel nommé (compte Cloudflare gratuit + nom de domaine). Laisse le Mac branché et éveillé : `lancer.sh` empêche la veille tant qu'il tourne, mais pas la fermeture du capot.
+
 ## Sur l'iPhone
 Ouvrir le lien dans **Safari** → Partager → **Sur l'écran d'accueil**. L'appli s'ouvre ensuite en plein écran. Si le lien change, refais l'ajout.
 
