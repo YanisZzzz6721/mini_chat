@@ -54,10 +54,10 @@ function json(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
-function readBody(req) {
+function readBody(req, max = 20000) {
   return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', (c) => { data += c; if (data.length > 20000) { reject(new Error('trop gros')); req.destroy(); } });
+    req.on('data', (c) => { data += c; if (data.length > max) { reject(new Error('trop gros')); req.destroy(); } });
     req.on('end', () => { try { resolve(JSON.parse(data || '{}')); } catch (e) { reject(e); } });
   });
 }
@@ -69,13 +69,21 @@ function auth(req, res) {
   return true;
 }
 
+// code d'accès + limites ; renvoie le compteur de l'IP, ou null si la requête a été refusée
+function gate(req, res) {
+  if (!auth(req, res)) return null;
+  const b = bucket(ipOf(req));
+  if (recent(b.minute, 60 * 1000).length >= LIMITE_MIN) { json(res, 429, { error: 'Doucement : trop de messages à la minute.' }); return null; }
+  if (recent(b.jour, 24 * 3600 * 1000).length >= LIMITE_JOUR) { json(res, 429, { error: 'Limite quotidienne atteinte.' }); return null; }
+  if (actifs >= MAX_PARALLELE) { json(res, 503, { error: 'Occupé, réessaie dans un instant.' }); return null; }
+  return b;
+}
+const acquire = (b) => { b.minute.push(Date.now()); b.jour.push(Date.now()); actifs++; };
+const release = () => { actifs--; };
+
 async function chat(req, res) {
-  if (!auth(req, res)) return;
-  const ip = ipOf(req);
-  const b = bucket(ip);
-  if (recent(b.minute, 60 * 1000).length >= LIMITE_MIN) return json(res, 429, { error: 'Doucement : trop de messages à la minute.' });
-  if (recent(b.jour, 24 * 3600 * 1000).length >= LIMITE_JOUR) return json(res, 429, { error: 'Limite quotidienne atteinte.' });
-  if (actifs >= MAX_PARALLELE) return json(res, 503, { error: 'Occupé, réessaie dans un instant.' });
+  const b = gate(req, res);
+  if (!b) return;
 
   let body;
   try { body = await readBody(req); } catch { return json(res, 400, { error: 'Requête invalide.' }); }
@@ -83,8 +91,7 @@ async function chat(req, res) {
   if (!message || message.length > MAX_CHARS) return json(res, 400, { error: `Message vide ou > ${MAX_CHARS} caractères.` });
   if (!UUID.test(body.sessionId || '')) return json(res, 400, { error: 'Session invalide.' });
 
-  b.minute.push(Date.now()); b.jour.push(Date.now());
-  actifs++;
+  acquire(b);
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream; charset=utf-8',
@@ -139,11 +146,17 @@ async function chat(req, res) {
   run(sessions.has(body.sessionId), true);
 }
 
-const TYPES = { '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
+const candidature = require('./candidature')({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, release, json, readBody });
+
+const TYPES = { '.js': 'text/javascript; charset=utf-8', '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
 
 http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
   if (req.method === 'POST' && url.pathname === '/api/chat') return chat(req, res);
+  if (url.pathname.startsWith('/api/profil') || url.pathname === '/api/candidature') {
+    const h = candidature[req.method + ' ' + url.pathname];
+    if (h) return h(req, res, url);
+  }
   if (req.method === 'GET' && url.pathname === '/api/ping') { if (auth(req, res)) json(res, 200, { ok: true }); return; }
   if (req.method !== 'GET') return json(res, 405, { error: 'Méthode non autorisée.' });
   const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);

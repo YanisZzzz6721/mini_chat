@@ -30,6 +30,33 @@
   #login { display: none; margin: auto; padding: 24px; width: min(360px, 100%); text-align: center; }
   #login input { width: 100%; padding: 12px; border-radius: 12px; border: 0; background: var(--card); color: var(--txt); font-size: 16px; text-align: center; }
   #login button { margin-top: 12px; width: 100%; padding: 12px; border: 0; border-radius: 12px; background: var(--me); color: #fff; font-size: 16px; }
+  #main { display: none; flex: 1; min-height: 0; flex-direction: column; }
+  #tabs { display: flex; gap: 6px; padding: 8px 12px 0; }
+  #tabs button { flex: 1; padding: 9px; border: 0; border-radius: 12px; background: var(--card); color: var(--mut); font: inherit; font-size: 15px; }
+  #tabs button.on { background: var(--me); color: #fff; }
+  #chatView { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+  #candView { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 14px 40px; display: none; -webkit-overflow-scrolling: touch; }
+  .panel { background: var(--card); border-radius: 16px; padding: 14px; margin-bottom: 12px; }
+  .panel h2 { margin: 0 0 8px; font-size: 17px; }
+  .panel p, .mut { color: var(--mut); font-size: 14px; margin: 6px 0; }
+  .panel label { display: block; font-size: 14px; color: var(--mut); margin: 10px 0 4px; }
+  .panel input[type=text], .panel input[type=number], .panel select, .panel textarea.f { width: 100%; padding: 10px 12px; border: 0; border-radius: 12px; background: #11141a; color: var(--txt); font: inherit; font-size: 16px; }
+  .panel textarea.f { resize: vertical; min-height: 90px; max-height: none; }
+  .btn { margin-top: 10px; padding: 11px 16px; border: 0; border-radius: 12px; background: var(--me); color: #fff; font: inherit; font-size: 15px; }
+  .btn.ghost { background: #2a2e38; }
+  .btn:disabled { opacity: .45; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .err { color: #ff8b8b; font-size: 14px; margin-top: 8px; min-height: 1em; }
+  .ok { color: #7ddc9b; font-size: 14px; }
+  .bar { height: 10px; border-radius: 6px; background: #11141a; overflow: hidden; margin: 8px 0; }
+  .bar > div { height: 100%; background: var(--me); width: 0; transition: width .4s; }
+  .chip { display: inline-block; padding: 3px 10px; margin: 3px 4px 0 0; border-radius: 12px; background: #11141a; font-size: 13px; }
+  .chip.no { color: #ffb4b4; }
+  .chip.yes { color: #9be3b4; }
+  .cnt { font-size: 13px; color: var(--mut); }
+  .cnt.over { color: #ff8b8b; }
+  details summary { color: var(--mut); font-size: 14px; margin-top: 10px; }
+  [hidden] { display: none !important; }
   #loginErr { color: #ff8b8b; min-height: 1.4em; margin-top: 8px; font-size: 14px; }
 </style>
 </head>
@@ -42,12 +69,79 @@
     <button id="go">Entrer</button>
     <div id="loginErr"></div>
   </div>
-  <div id="log"></div>
-  <form id="form">
-    <textarea id="msg" rows="1" placeholder="Écris ton message…" enterkeyhint="send"></textarea>
-    <button id="send" type="submit" aria-label="Envoyer">↑</button>
-  </form>
+  <div id="main">
+    <div id="tabs"><button id="tChat" class="on">Chat</button><button id="tCand">Candidature</button></div>
+    <section id="chatView">
+      <div id="log"></div>
+      <form id="form">
+        <textarea id="msg" rows="1" placeholder="Écris ton message…" enterkeyhint="send"></textarea>
+        <button id="send" type="submit" aria-label="Envoyer">↑</button>
+      </form>
+    </section>
+    <section id="candView">
+      <div class="panel">
+        <h2>1. Mon profil</h2>
+        <label for="pid">Nom du profil (le même à chaque fois, ex : anass)</label>
+        <div class="row"><input id="pid" type="text" autocapitalize="off" autocomplete="off" style="flex:1"><button class="btn ghost" id="pload" style="margin:0">Charger</button></div>
+        <div id="pEtat" class="mut"></div>
+        <div id="pImport" hidden>
+          <p>Importe ton CV (PDF, Word ou texte), ou colle-le ci-dessous avec tes expériences.</p>
+          <input id="pfile" type="file" accept=".pdf,.docx,.txt,.md" class="mut">
+          <label for="ptexte">Ou colle ton CV / tes expériences</label>
+          <textarea id="ptexte" class="f" rows="6"></textarea>
+          <button class="btn" id="pana">Analyser mon CV</button>
+          <div class="err" id="pErr"></div>
+        </div>
+        <div id="pEdit" hidden>
+          <p>Relis ton profil et corrige ce qui est faux. Les lettres et CV s’appuient uniquement sur ce texte.</p>
+          <textarea id="pmd" class="f" rows="14"></textarea>
+          <details>
+            <summary>Réglages d’écriture</summary>
+            <label for="rTon">Ton</label>
+            <select id="rTon"><option value="professionnel">Professionnel</option><option value="chaleureux">Chaleureux</option><option value="direct">Direct</option></select>
+            <label for="rMax">Longueur max de la lettre (caractères)</label>
+            <input id="rMax" type="number" min="500" max="3000" step="100">
+            <label><input id="rTirets" type="checkbox"> Pas de tiret long (— –)</label>
+            <label for="rNotes">Consignes personnelles (optionnel)</label>
+            <textarea id="rNotes" class="f" rows="3" maxlength="500" placeholder="Ex : toujours insister sur ma disponibilité, ne pas mentionner mes études"></textarea>
+          </details>
+          <div class="row"><button class="btn" id="psave">Enregistrer</button><button class="btn ghost" id="pnew">Réimporter un CV</button></div>
+          <div id="pOk" class="ok"></div>
+        </div>
+      </div>
+      <div class="panel">
+        <h2>2. Offre d’emploi</h2>
+        <textarea id="offre" class="f" rows="7" placeholder="Colle ici le texte complet de l’annonce Indeed"></textarea>
+        <button class="btn" id="gen">Générer ma candidature</button>
+        <div class="err" id="gErr"></div>
+      </div>
+      <div id="res" hidden>
+        <div class="panel">
+          <h2 id="rMeta">Compatibilité</h2>
+          <div class="bar"><div id="rBar"></div></div>
+          <div id="rScore" class="mut"></div>
+          <div id="rOk"></div><div id="rNo"></div>
+          <p id="rConseil"></p>
+        </div>
+        <div class="panel">
+          <h2>Lettre de motivation</h2>
+          <textarea id="rLettre" class="f" rows="12"></textarea>
+          <div class="cnt" id="rCnt"></div>
+          <div class="row"><button class="btn" id="cpL">Copier</button><button class="btn ghost" id="dlL">Télécharger .docx</button></div>
+        </div>
+        <div class="panel">
+          <h2>CV adapté</h2>
+          <textarea id="rCv" class="f" rows="14"></textarea>
+          <div class="row"><button class="btn" id="cpC">Copier</button><button class="btn ghost" id="dlC">Télécharger PDF</button></div>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>
+<script src="/vendor/jszip.min.js"></script>
+<script src="/vendor/pdf.min.js"></script>
+<script src="/vendor/docx.umd.js"></script>
+<script src="/vendor/jspdf.umd.min.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const store = {
@@ -70,9 +164,20 @@ function add(cls, text) {
 
 function showLogin(show) {
   $('login').style.display = show ? 'block' : 'none';
-  $('log').style.display = $('form').style.display = show ? 'none' : '';
-  if (!show) $('log').style.display = 'flex';
+  $('main').style.display = show ? 'none' : 'flex';
 }
+
+function setTab(nom) {
+  const cand = nom === 'cand';
+  $('chatView').style.display = cand ? 'none' : 'flex';
+  $('candView').style.display = cand ? 'block' : 'none';
+  $('tChat').classList.toggle('on', !cand);
+  $('tCand').classList.toggle('on', cand);
+  $('reset').style.visibility = cand ? 'hidden' : 'visible';
+  if (cand && window.initCandidature) window.initCandidature();
+}
+$('tChat').onclick = () => setTab('chat');
+$('tCand').onclick = () => setTab('cand');
 
 async function checkCode(c) {
   const r = await fetch('/api/ping', { headers: { 'x-code': c } });
@@ -137,5 +242,6 @@ $('form').onsubmit = async (e) => {
   try { showLogin(!(await checkCode(code))); } catch { showLogin(false); }
 })();
 </script>
+<script src="/candidature.js"></script>
 </body>
 </html>
