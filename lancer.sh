@@ -17,6 +17,7 @@ CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 LOG=logs/superviseur.log
 LIEN_FILE=logs/lien.txt
 : > "$LIEN_FILE"
+rm -f logs/.lien-annonce
 
 # ---------------------------------------------------------------- journal
 log() { # niveau message...
@@ -55,9 +56,11 @@ plafond() { # cle max fenetre_en_secondes : succès tant que moins de "max" envo
   echo "$now" >> "$f"
 }
 
-envoyer_mail() { # destinataire sujet corps
-  local to="$1" sujet="$2" corps="$3" fichier pass
+envoyer_mail() { # destinataire sujet corps ; succès (0) si le mail est parti
+  local to="$1" sujet="$2" corps="$3" fichier pass methode
   [ -n "$to" ] || return 0
+  methode="${MAIL_METHOD:-}"
+  [ -z "$methode" ] && [ -n "${SMTP_USER:-}" ] && methode=smtp
   fichier=$(mktemp)
   {
     printf 'From: %s\n' "${MAIL_FROM:-${SMTP_USER:-postuler@localhost}}"
@@ -71,8 +74,28 @@ envoyer_mail() { # destinataire sujet corps
     { echo "=== MAIL à $to ==="; cat "$fichier"; echo; } >> logs/mails-test.txt
     log MAIL "(test) → $to : $sujet"; rm -f "$fichier"; return 0
   fi
-  if [ -z "${SMTP_USER:-}" ] || [ -z "${SMTP_PASS:-}" ]; then
-    log AVERT "e-mail non configuré (SMTP_USER / SMTP_PASS dans .env.local) : « $sujet » non envoyé à $to"
+
+  if [ "$methode" = mailapp ]; then # macOS : l'application Mail envoie avec le compte déjà configuré, sans mot de passe à saisir
+    rm -f "$fichier"
+    if ! command -v osascript >/dev/null; then log ERREUR "MAIL_METHOD=mailapp demande macOS (osascript introuvable)."; return 1; fi
+    if osascript - "$to" "$sujet" "$corps" 2>>"$LOG" <<'APPLESCRIPT'
+on run argv
+  set adresse to item 1 of argv
+  set sujetMail to item 2 of argv
+  set texteMail to item 3 of argv
+  tell application "Mail"
+    set m to make new outgoing message with properties {subject:sujetMail, content:texteMail & return, visible:false}
+    tell m to make new to recipient at end of to recipients with properties {address:adresse}
+    send m
+  end tell
+end run
+APPLESCRIPT
+    then log MAIL "envoyé à $to via Mail : $sujet"; return 0
+    else log ERREUR "échec de l'envoi via Mail (compte configuré dans Mail ? autorisation « Automatisation » accordée au Terminal dans Réglages Système > Confidentialité ?)"; return 1; fi
+  fi
+
+  if [ "$methode" != smtp ] || [ -z "${SMTP_USER:-}" ] || [ -z "${SMTP_PASS:-}" ]; then
+    log AVERT "e-mail non configuré : « $sujet » non envoyé à $to. Lance ./lancer.sh --config pour le régler."
     rm -f "$fichier"; return 1
   fi
   pass=${SMTP_PASS//\\/\\\\}; pass=${pass//\"/\\\"}
@@ -80,11 +103,10 @@ envoyer_mail() { # destinataire sujet corps
   if printf 'user = "%s:%s"\n' "$SMTP_USER" "$pass" | curl -sS --max-time 40 -K - \
       --url "${SMTP_URL:-smtps://smtp.gmail.com:465}" --ssl-reqd \
       --mail-from "${MAIL_FROM:-$SMTP_USER}" --mail-rcpt "$to" -T "$fichier" 2>>"$LOG"; then
-    log MAIL "envoyé à $to : $sujet"
-  else
-    log ERREUR "échec d'envoi de l'e-mail à $to (« $sujet ») : voir les lignes ci-dessus (mot de passe d'application ? serveur SMTP ?)"
+    log MAIL "envoyé à $to : $sujet"; rm -f "$fichier"; return 0
   fi
-  rm -f "$fichier"
+  log ERREUR "échec d'envoi de l'e-mail à $to (« $sujet ») : voir les lignes ci-dessus (mot de passe d'application ? serveur SMTP ?)"
+  rm -f "$fichier"; return 1
 }
 
 diagnostic() { # état complet, joint aux alertes envoyées à l'administrateur
@@ -109,30 +131,110 @@ $(diagnostic)"
 }
 
 annoncer_lien() { # lien : à la personne qui utilise l'appli, et à l'administrateur
-  local lien="$1"
+  local lien="$1" sujet intro
+  if [ -f logs/.lien-annonce ]; then
+    sujet="Postuler : NOUVEAU lien (l'ancien ne marche plus)"
+    intro="Le lien de l'application a changé. L'ancien ne fonctionne plus, utilise celui-ci :"
+  else
+    sujet="Postuler : ton lien d'accès"
+    intro="Voici le lien pour ouvrir l'application :"
+  fi
+  touch logs/.lien-annonce
   # chaque nouveau lien est envoyé (l'ancien est mort) ; le plafond évite l'avalanche si le tunnel boucle
   if plafond lien-user 6 3600; then
-    envoyer_mail "${MAIL_TO_USER:-}" "Postuler : ton lien d'accès" "Bonjour,
+    envoyer_mail "${MAIL_TO_USER:-}" "$sujet" "Bonjour,
 
-Voici le lien pour ouvrir l'application :
+$intro
 
 $lien
 
 Ouvre-le dans Safari. Pour l'avoir sur l'écran d'accueil : Partager, puis « Sur l'écran d'accueil ».
-Le code d'accès est celui qu'on t'a donné séparément.
+Le code d'accès reste le même (donné séparément).
 
-Ce lien peut changer : si l'application ne s'ouvre plus, un nouveau mail avec le nouveau lien t'est envoyé automatiquement.
+Chaque fois que le lien change, un nouveau mail est envoyé automatiquement.
 
 Message automatique."
   fi
   if plafond lien-admin 6 3600; then
-    envoyer_mail "${MAIL_TO_ADMIN:-}" "[Postuler] Nouveau lien : $lien" "Un nouveau tunnel est actif.
+    envoyer_mail "${MAIL_TO_ADMIN:-}" "[Postuler] ${sujet#Postuler : } : $lien" "$intro
 
 $lien
 
 $(diagnostic)"
   fi
 }
+
+rassurer_utilisateur() { # après un plantage du serveur : le lien n'a pas changé, mais on le renvoie avec la bonne nouvelle
+  local lien; lien=$(cat "$LIEN_FILE" 2>/dev/null)
+  [ -n "$lien" ] || return 0
+  plafond lien-user 6 3600 || return 0
+  envoyer_mail "${MAIL_TO_USER:-}" "Postuler : le service est rétabli" "Bonjour,
+
+L'application a eu un souci passager et vient de redémarrer. Le lien n'a pas changé :
+
+$lien
+
+Si la page ne s'ouvre pas, patiente une minute : si le lien change, un nouveau mail t'est envoyé automatiquement.
+
+Message automatique."
+}
+
+# ---------------------------------------------------------------- assistant de configuration : ./lancer.sh --config
+ecrire_reglage() { # CLE valeur : crée ou met à jour la ligne dans .env.local (lisible par toi seul)
+  local cle="$1" val="$2" q
+  q="'${val//\'/\'\\\'\'}'"
+  touch .env.local; chmod 600 .env.local
+  if grep -q "^${cle}=" .env.local; then
+    K="$cle" V="$q" awk 'BEGIN { k = ENVIRON["K"]; v = ENVIRON["V"] } index($0, k "=") == 1 { print k "=" v; next } { print }' .env.local > .env.local.tmp && mv .env.local.tmp .env.local
+  else
+    printf '%s=%s\n' "$cle" "$q" >> .env.local
+  fi
+  chmod 600 .env.local
+}
+
+assistant_config() {
+  local v c dest
+  echo "=== Réglage des e-mails ==="
+  echo "Rien n'est écrit en dehors du fichier .env.local de ce dossier (ignoré par Git)."
+  echo
+  read -rp "Adresse qui reçoit le lien à CHAQUE nouveau lien ou plantage [${MAIL_TO_USER:-aucune}] : " v
+  [ -n "$v" ] && ecrire_reglage MAIL_TO_USER "$v"
+  read -rp "Ton adresse pour les alertes techniques détaillées (facultatif) [${MAIL_TO_ADMIN:-aucune}] : " v
+  [ -n "$v" ] && ecrire_reglage MAIL_TO_ADMIN "$v"
+  echo
+  echo "Comment envoyer les mails ?"
+  echo "  1) Application Mail du Mac (le plus simple : aucun mot de passe, il faut un compte déjà configuré dans Mail)"
+  echo "  2) Compte Gmail (mot de passe d'application : https://myaccount.google.com/apppasswords)"
+  echo "  3) Compte Outlook / Hotmail (mot de passe d'application si la validation en 2 étapes est active)"
+  echo "  4) Autre serveur SMTP"
+  read -rp "Choix [1] : " c
+  case "${c:-1}" in
+    1) ecrire_reglage MAIL_METHOD mailapp
+       echo "Au premier envoi, macOS demandera d'autoriser le Terminal à contrôler Mail : accepte." ;;
+    2|3|4)
+      case "$c" in
+        2) ecrire_reglage SMTP_URL "smtps://smtp.gmail.com:465" ;;
+        3) ecrire_reglage SMTP_URL "smtp://smtp-mail.outlook.com:587" ;;
+        4) read -rp "Adresse du serveur (ex. smtps://smtp.exemple.fr:465) : " v; ecrire_reglage SMTP_URL "$v" ;;
+      esac
+      read -rp "Adresse du compte qui ENVOIE : " v; ecrire_reglage SMTP_USER "$v"
+      read -rsp "Mot de passe d'application (invisible) : " v; echo; ecrire_reglage SMTP_PASS "$v"
+      ecrire_reglage MAIL_METHOD smtp ;;
+    *) echo "Choix inconnu, rien changé."; return 1 ;;
+  esac
+  set -a; . ./.env.local; set +a
+  dest="${MAIL_TO_ADMIN:-${MAIL_TO_USER:-}}"
+  if [ -z "$dest" ]; then echo "Aucun destinataire réglé : pas de test."; return 0; fi
+  read -rp "Envoyer un mail de test à $dest ? [O/n] " v
+  case "${v:-O}" in
+    [Nn]*) echo "Réglages enregistrés dans .env.local." ;;
+    *) if envoyer_mail "$dest" "Postuler : test d'envoi" "Si tu lis ce message, l'envoi automatique des liens fonctionne."; then
+         echo "Mail de test envoyé à $dest. Vérifie ta boîte (et les courriers indésirables)."
+       else echo "L'envoi a échoué : regarde le message d'erreur ci-dessus ou dans $LOG, puis relance ./lancer.sh --config."; fi ;;
+  esac
+}
+
+if [ "${1:-}" = "--config" ]; then assistant_config; exit $?; fi
 
 # ---------------------------------------------------------------- vérifications avant démarrage
 avec_delai() { # secondes commande... (perl existe sur macOS comme sur Linux)
@@ -181,22 +283,23 @@ prerequis() {
   fi
   if [ "${#CODE}" -lt 6 ]; then log ERREUR "Le code d'accès doit faire 6 caractères au minimum."; ok=0; fi
 
-  if [ -n "${MAIL_TO_USER:-}${MAIL_TO_ADMIN:-}" ] && [ -z "${MAIL_DRY_RUN:-}" ] && { [ -z "${SMTP_USER:-}" ] || [ -z "${SMTP_PASS:-}" ]; }; then
-    log AVERT "Des destinataires e-mail sont réglés mais SMTP_USER / SMTP_PASS manquent : aucun mail ne partira (voir .env.local.example)."
-  elif [ -z "${MAIL_TO_USER:-}${MAIL_TO_ADMIN:-}" ]; then
-    log INFO "  e-mails : désactivés (aucun destinataire dans .env.local)"
-  else log INFO "  e-mails : actifs"; fi
+  if [ -z "${MAIL_TO_USER:-}${MAIL_TO_ADMIN:-}" ]; then
+    log INFO "  e-mails : désactivés (aucun destinataire). Pour les activer : ./lancer.sh --config"
+  elif [ -n "${MAIL_DRY_RUN:-}" ]; then log INFO "  e-mails : mode test (écrits dans logs/mails-test.txt)"
+  elif [ "${MAIL_METHOD:-}" = mailapp ] || { [ -n "${SMTP_USER:-}" ] && [ -n "${SMTP_PASS:-}" ]; }; then log INFO "  e-mails : actifs (${MAIL_METHOD:-smtp})"
+  else log AVERT "Des destinataires sont réglés mais l'envoi ne l'est pas : aucun mail ne partira. Lance ./lancer.sh --config"; fi
 
   [ "$ok" = 1 ]
 }
 
 # ---------------------------------------------------------------- serveur
 lancer_serveur() { # boucle : relance le serveur s'il s'arrête, avec attente croissante
-  local debut crashs=0 rc attente
+  local debut crashs=0 rc attente relance=0
   while true; do
     debut=$(date +%s)
     CODE="$CODE" PORT="$PORT" CLAUDE_BIN="$CLAUDE_BIN" node server.js >> logs/serveur.log 2>&1 &
     echo $! > logs/serveur.pid
+    if [ "$relance" = 1 ]; then ( attendre_serveur && log INFO "Serveur de nouveau en ligne." && rassurer_utilisateur ) & fi
     wait "$(cat logs/serveur.pid)"; rc=$?
     log ERREUR "Le serveur s'est arrêté (code $rc). Dernières lignes : $(tail -n 3 logs/serveur.log | tr '\n' ' ' | cut -c1-300)"
     if [ $(( $(date +%s) - debut )) -lt 60 ]; then crashs=$((crashs + 1)); else crashs=1; fi
@@ -206,6 +309,7 @@ lancer_serveur() { # boucle : relance le serveur s'il s'arrête, avec attente cr
       alerter_admin serveur-boucle 1800 "Le serveur plante en boucle" "Il s'est arrêté $crashs fois de suite en moins d'une minute chacune (dernier code : $rc)."
     fi
     log INFO "Redémarrage du serveur dans ${attente} s…"
+    relance=1
     sleep "$attente"
   done
 }

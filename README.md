@@ -36,8 +36,8 @@ Le terminal affiche un cadre **LIEN À ENVOYER**. `Ctrl+C` coupe tout.
 
 **Journaux** (dossier `logs/`, ignoré par Git, tronqués au-delà de 1 Mo) : `superviseur.log`, `serveur.log` (une ligne par requête, sans le contenu des lettres), `tunnel.log`, `alertes.jsonl`. Sur macOS, une notification locale s'affiche aussi à chaque alerte.
 
-**E-mails** (facultatif, réglé dans `.env.local`)
-- `MAIL_TO_USER` : reçoit **le lien** à chaque nouveau lien, sans détail technique et **jamais le code d'accès**. Plafonné à 6 mails par heure si le tunnel boucle.
+**E-mails** (facultatif). Le plus simple : `./lancer.sh --config`, un assistant qui pose les questions (adresse qui reçoit le lien, méthode d'envoi : application Mail du Mac sans mot de passe, ou Gmail / Outlook / autre SMTP), crée `.env.local` (lisible par toi seul) et envoie un mail de test.
+- `MAIL_TO_USER` : reçoit **le lien** à chaque nouveau lien (« NOUVEAU lien, l'ancien ne marche plus ») et un mail « service rétabli » avec le lien après un plantage du serveur, sans détail technique et **jamais le code d'accès**. Plafonné à 6 mails par heure si ça boucle.
 - `MAIL_TO_ADMIN` : reçoit les alertes techniques avec un diagnostic complet (état, versions, dernières lignes des journaux) : nouveau lien, tunnel relancé, tunnel instable, serveur en panne, Claude déconnecté ou limite atteinte, échec au démarrage. Un délai anti-spam évite les doublons.
 - L'envoi passe par SMTP avec un compte à toi (par exemple Gmail avec un « mot de passe d'application »). Les identifiants restent dans `.env.local` et ne sont pas visibles dans la liste des processus.
 - Pour tester sans rien envoyer : `MAIL_DRY_RUN=1 ./lancer.sh` écrit les mails dans `logs/mails-test.txt`.
