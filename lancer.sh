@@ -63,7 +63,7 @@ envoyer_mail() { # destinataire sujet corps ; succès (0) si le mail est parti
   [ -z "$methode" ] && [ -n "${SMTP_USER:-}" ] && methode=smtp
   fichier=$(mktemp)
   {
-    printf 'From: %s\n' "${MAIL_FROM:-${SMTP_USER:-postuler@localhost}}"
+    printf 'From: %s <%s>\n' "${MAIL_FROM_NAME:-Postuler}" "${MAIL_FROM:-${SMTP_USER:-postuler@localhost}}"
     printf 'To: %s\n' "$to"
     printf 'Subject: =?UTF-8?B?%s?=\n' "$(printf '%s' "$sujet" | base64 | tr -d '\n')"
     printf 'Date: %s\n' "$(LC_ALL=C date '+%a, %d %b %Y %H:%M:%S %z')"
@@ -194,42 +194,50 @@ ecrire_reglage() { # CLE valeur : crée ou met à jour la ligne dans .env.local 
 
 assistant_config() {
   local v c dest
-  echo "=== Réglage des e-mails ==="
+  echo "=== Réglage des e-mails automatiques ==="
   echo "Rien n'est écrit en dehors du fichier .env.local de ce dossier (ignoré par Git)."
   echo
-  read -rp "Adresse qui reçoit le lien à CHAQUE nouveau lien ou plantage [${MAIL_TO_USER:-aucune}] : " v
+  echo "ÉTAPE 1 : à qui envoyer le lien ?"
+  read -rp "Adresse e-mail du DESTINATAIRE (la personne qui utilise l'appli) [${MAIL_TO_USER:-aucune}] : " v
   [ -n "$v" ] && ecrire_reglage MAIL_TO_USER "$v"
-  read -rp "Ton adresse pour les alertes techniques détaillées (facultatif) [${MAIL_TO_ADMIN:-aucune}] : " v
-  [ -n "$v" ] && ecrire_reglage MAIL_TO_ADMIN "$v"
   echo
-  echo "Comment envoyer les mails ?"
-  echo "  1) Application Mail du Mac (le plus simple : aucun mot de passe, il faut un compte déjà configuré dans Mail)"
-  echo "  2) Compte Gmail (mot de passe d'application : https://myaccount.google.com/apppasswords)"
-  echo "  3) Compte Outlook / Hotmail (mot de passe d'application si la validation en 2 étapes est active)"
-  echo "  4) Autre serveur SMTP"
+  echo "ÉTAPE 2 : de quelle boîte les mails partent-ils ?"
+  echo "Un e-mail doit partir d'une boîte. Pour ne pas utiliser ta boîte personnelle, crée une boîte GRATUITE"
+  echo "juste pour l'appli (ex. postuler.anass@outlook.com ou @gmail.com), puis un « mot de passe d'application »."
+  echo "Le destinataire verra alors un mail de « Postuler » envoyé par cette boîte."
+  echo
+  echo "  1) Boîte dédiée Gmail      (mot de passe d'application : https://myaccount.google.com/apppasswords)"
+  echo "  2) Boîte dédiée Outlook    (mot de passe d'application : https://account.live.com/proofs/AppPassword)"
+  echo "  3) Autre serveur SMTP"
+  echo "  4) Application Mail de CE Mac (envoie depuis ton compte personnel : déconseillé ici)"
   read -rp "Choix [1] : " c
   case "${c:-1}" in
-    1) ecrire_reglage MAIL_METHOD mailapp
+    4) ecrire_reglage MAIL_METHOD mailapp
        echo "Au premier envoi, macOS demandera d'autoriser le Terminal à contrôler Mail : accepte." ;;
-    2|3|4)
-      case "$c" in
-        2) ecrire_reglage SMTP_URL "smtps://smtp.gmail.com:465" ;;
-        3) ecrire_reglage SMTP_URL "smtp://smtp-mail.outlook.com:587" ;;
-        4) read -rp "Adresse du serveur (ex. smtps://smtp.exemple.fr:465) : " v; ecrire_reglage SMTP_URL "$v" ;;
+    1|2|3)
+      case "${c:-1}" in
+        1) ecrire_reglage SMTP_URL "smtps://smtp.gmail.com:465" ;;
+        2) ecrire_reglage SMTP_URL "smtp://smtp-mail.outlook.com:587" ;;
+        3) read -rp "Adresse du serveur (ex. smtps://smtp.exemple.fr:465) : " v; ecrire_reglage SMTP_URL "$v" ;;
       esac
-      read -rp "Adresse du compte qui ENVOIE : " v; ecrire_reglage SMTP_USER "$v"
-      read -rsp "Mot de passe d'application (invisible) : " v; echo; ecrire_reglage SMTP_PASS "$v"
+      read -rp "Adresse de la boîte DÉDIÉE qui envoie (pas la tienne) : " v; ecrire_reglage SMTP_USER "$v"
+      read -rsp "Mot de passe d'application de cette boîte (invisible) : " v; echo; ecrire_reglage SMTP_PASS "$v"
       ecrire_reglage MAIL_METHOD smtp ;;
     *) echo "Choix inconnu, rien changé."; return 1 ;;
   esac
+  echo
+  echo "FACULTATIF : veux-tu aussi recevoir, TOI, les alertes techniques détaillées (tunnel relancé, serveur en panne…) ?"
+  read -rp "Ton adresse (laisse vide pour ne rien recevoir) [${MAIL_TO_ADMIN:-aucune}] : " v
+  [ -n "$v" ] && ecrire_reglage MAIL_TO_ADMIN "$v"
   set -a; . ./.env.local; set +a
-  dest="${MAIL_TO_ADMIN:-${MAIL_TO_USER:-}}"
+  dest="${MAIL_TO_USER:-${MAIL_TO_ADMIN:-}}"
   if [ -z "$dest" ]; then echo "Aucun destinataire réglé : pas de test."; return 0; fi
+  echo
   read -rp "Envoyer un mail de test à $dest ? [O/n] " v
   case "${v:-O}" in
     [Nn]*) echo "Réglages enregistrés dans .env.local." ;;
     *) if envoyer_mail "$dest" "Postuler : test d'envoi" "Si tu lis ce message, l'envoi automatique des liens fonctionne."; then
-         echo "Mail de test envoyé à $dest. Vérifie ta boîte (et les courriers indésirables)."
+         echo "Mail de test envoyé à $dest. Vérifie sa boîte (et les courriers indésirables)."
        else echo "L'envoi a échoué : regarde le message d'erreur ci-dessus ou dans $LOG, puis relance ./lancer.sh --config."; fi ;;
   esac
 }
