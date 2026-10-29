@@ -221,7 +221,9 @@ assistant_config() {
         3) read -rp "Adresse du serveur (ex. smtps://smtp.exemple.fr:465) : " v; ecrire_reglage SMTP_URL "$v" ;;
       esac
       read -rp "Adresse de la boîte DÉDIÉE qui envoie (pas la tienne) : " v; ecrire_reglage SMTP_USER "$v"
-      read -rsp "Mot de passe d'application de cette boîte (invisible) : " v; echo; ecrire_reglage SMTP_PASS "$v"
+      read -rsp "Mot de passe d'application de cette boîte (invisible) : " v; echo
+      [ "${c:-1}" = 1 ] && v=${v// /}   # Gmail affiche le mot de passe par groupes de 4 : les espaces ne comptent pas
+      ecrire_reglage SMTP_PASS "$v"
       ecrire_reglage MAIL_METHOD smtp ;;
     *) echo "Choix inconnu, rien changé."; return 1 ;;
   esac
