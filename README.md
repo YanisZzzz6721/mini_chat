@@ -18,12 +18,31 @@ Une page web (iPhone, plein écran) qui envoie les messages à `claude -p` sur *
 ```bash
 git clone https://github.com/YanisZzzz6721/mini_chat   # la première fois ; ensuite : git pull
 cd mini_chat
+cp .env.local.example .env.local                      # une seule fois, puis remplis-le (voir plus bas)
 ./lancer.sh
 ```
-Le terminal affiche un lien `https://xxxx.trycloudflare.com` : envoie-le avec le code d'accès. Le lien change à chaque lancement. `Ctrl+C` coupe tout.
+Le terminal affiche un cadre **LIEN À ENVOYER**. `Ctrl+C` coupe tout.
 
-## Si le lien ne marche plus
-Les tunnels gratuits Cloudflare n'ont aucune garantie : ils coupent quand le Mac s'endort ou que le réseau saute, et Cloudflare peut les supprimer (`Tunnel not found` dans le terminal). `lancer.sh` le détecte, recrée le tunnel et affiche un **nouveau** « LIEN À ENVOYER » : il faut renvoyer ce lien à la personne (l'ancien est mort). Pour garder un lien fixe, il faut un tunnel nommé (compte Cloudflare gratuit + nom de domaine). Laisse le Mac branché et éveillé : `lancer.sh` empêche la veille tant qu'il tourne, mais pas la fermeture du capot.
+## Superviseur : relance automatique, diagnostic, e-mails
+`lancer.sh` ne se contente pas de lancer : il surveille et répare.
+
+**Avant de démarrer**, il vérifie et explique chaque problème avec la solution : Node 18+, `cloudflared`, `claude` installé **et connecté** (un vrai test), port libre, espace disque, code d'accès, réglages e-mail.
+
+**Pendant le fonctionnement**
+- Le **serveur** qui plante est relancé (attente croissante). S'il plante en boucle, l'administrateur est prévenu.
+- Le **tunnel** est recréé s'il meurt, si Cloudflare le supprime (`Tunnel not found`), ou si le lien public ne répond plus pendant 3 minutes. Un Mac qui se réveille est détecté.
+- Les échecs de Claude sont classés (déconnecté, limite d'utilisation atteinte, réseau, délai dépassé après 4 minutes) : l'utilisateur voit un message clair, l'administrateur reçoit une alerte si c'est à lui d'agir.
+- Une erreur inattendue du serveur est journalisée avec sa pile d'appels, puis le serveur est relancé.
+
+**Journaux** (dossier `logs/`, ignoré par Git, tronqués au-delà de 1 Mo) : `superviseur.log`, `serveur.log` (une ligne par requête, sans le contenu des lettres), `tunnel.log`, `alertes.jsonl`. Sur macOS, une notification locale s'affiche aussi à chaque alerte.
+
+**E-mails** (facultatif, réglé dans `.env.local`)
+- `MAIL_TO_USER` : reçoit **le lien** à chaque nouveau lien, sans détail technique et **jamais le code d'accès**. Plafonné à 6 mails par heure si le tunnel boucle.
+- `MAIL_TO_ADMIN` : reçoit les alertes techniques avec un diagnostic complet (état, versions, dernières lignes des journaux) : nouveau lien, tunnel relancé, tunnel instable, serveur en panne, Claude déconnecté ou limite atteinte, échec au démarrage. Un délai anti-spam évite les doublons.
+- L'envoi passe par SMTP avec un compte à toi (par exemple Gmail avec un « mot de passe d'application »). Les identifiants restent dans `.env.local` et ne sont pas visibles dans la liste des processus.
+- Pour tester sans rien envoyer : `MAIL_DRY_RUN=1 ./lancer.sh` écrit les mails dans `logs/mails-test.txt`.
+
+Le lien Cloudflare gratuit change à chaque recréation : c'est pour ça que le nouveau lien part automatiquement par e-mail. Pour un lien fixe, il faut un tunnel nommé (compte Cloudflare gratuit + nom de domaine). Laisse le Mac branché et éveillé : `lancer.sh` empêche la veille tant qu'il tourne, mais pas la fermeture du capot.
 
 ## Sur l'iPhone
 Ouvrir le lien dans **Safari** → Partager → **Sur l'écran d'accueil**. L'appli s'ouvre ensuite en plein écran. Si le lien change, refais l'ajout.
@@ -60,12 +79,12 @@ Chaque nouvelle lettre reçoit : le profil, `preferences.md`, et les 3 lettres p
 
 Garde-fous : seuls les faits du profil sont utilisés (rien d'inventé) ; tirets longs et dépassement de longueur sont corrigés côté serveur. Toute personne qui a le code d'accès et connaît un nom de profil peut le lire : ne partage le code qu'avec des gens de confiance. Prompts modifiables : `prompt-profil.md`, `prompt-candidature.md`, `prompt-retouche.md`, `prompt-preferences.md`.
 
-## Personnaliser l'assistant
-Édite `prompt-systeme.md` (rôle, ton, limites). Pris en compte à chaque message, sans relancer.
+## Personnaliser
+Les prompts sont dans `prompt-profil.md`, `prompt-candidature.md`, `prompt-retouche.md`, `prompt-preferences.md` et `prompt-coach.md` (pris en compte sans relancer).
 
 ## Sécurité
 - Code d'accès obligatoire ; 10 essais ratés / 10 min → blocage de l'IP.
 - Claude tourne **sans aucun outil** (`--tools ""`), sans réglages ni skills, dans le dossier vide `.sandbox/` : il ne voit pas ton vault.
 - Limites : 6 messages/min et 200/jour par IP, 2 requêtes en parallèle, 4000 caractères max (réglables : `LIMITE_PAR_MINUTE`, `LIMITE_PAR_JOUR`, `MAX_PARALLELE`).
 - Chaque message consomme ton abonnement Claude. Ton ordinateur doit rester allumé (`lancer.sh` empêche la veille sur macOS).
-- Variables : `PORT`, `MODEL`, `CLAUDE_BIN`.
+- Variables : `PORT`, `MODEL`, `CLAUDE_BIN`, `CLAUDE_TIMEOUT_S`.

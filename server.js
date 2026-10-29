@@ -1,9 +1,9 @@
-// Mini chat web -> claude -p. Aucune dépendance (Node >= 18).
+// Serveur de l'appli Postuler. Aucune dépendance (Node >= 18). Supervisé par lancer.sh.
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
+const diag = require('./diag');
 
 const PORT = Number(process.env.PORT || 3000);
 const CODE = process.env.CODE;
@@ -12,26 +12,24 @@ const MODEL = process.env.MODEL || '';
 const LIMITE_MIN = Number(process.env.LIMITE_PAR_MINUTE || 6);
 const LIMITE_JOUR = Number(process.env.LIMITE_PAR_JOUR || 200);
 const MAX_PARALLELE = Number(process.env.MAX_PARALLELE || 2);
-const MAX_CHARS = 4000;
+const CLAUDE_TIMEOUT_MS = Number(process.env.CLAUDE_TIMEOUT_S || 240) * 1000;
 
 if (!CODE || CODE.length < 6) {
-  console.error('Définis CODE (6 caractères minimum) : CODE=monmotdepasse node server.js');
+  diag.log('FATAL', 'CODE manquant ou trop court (6 caractères minimum).');
   process.exit(1);
 }
+
+// Une erreur non gérée laisse le serveur dans un état incertain : on journalise puis on sort, lancer.sh le relance.
+process.on('uncaughtException', (e) => { diag.log('FATAL', 'uncaughtException : ' + ((e && e.stack) || e)); process.exit(1); });
+process.on('unhandledRejection', (e) => { diag.log('FATAL', 'unhandledRejection : ' + ((e && e.stack) || e)); process.exit(1); });
 
 const ROOT = __dirname;
 const PUBLIC = path.join(ROOT, 'public');
 const SANDBOX = path.join(ROOT, '.sandbox'); // dossier vide : Claude n'y voit rien d'autre
-const SESSIONS_FILE = path.join(SANDBOX, 'sessions.json');
 fs.mkdirSync(SANDBOX, { recursive: true });
-
-let sessions = new Set();
-try { sessions = new Set(JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'))); } catch {}
-const saveSessions = () => fs.writeFileSync(SESSIONS_FILE, JSON.stringify([...sessions]));
 
 const sha = (s) => crypto.createHash('sha256').update(s).digest();
 const codeOk = (c) => typeof c === 'string' && crypto.timingSafeEqual(sha(c), sha(CODE));
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 // limites par IP (Cloudflare fournit cf-connecting-ip)
 const hits = new Map(); // ip -> { minute: [ts], jour: [ts], echecs: [ts] }
@@ -43,11 +41,6 @@ function bucket(ip) {
 const recent = (arr, ms) => { const t = Date.now() - ms; while (arr.length && arr[0] < t) arr.shift(); return arr; };
 
 let actifs = 0;
-
-function systemPrompt() {
-  return fs.readFileSync(path.join(ROOT, 'prompt-systeme.md'), 'utf8')
-    .replace(/^---[\s\S]*?---\s*/, '').trim();
-}
 
 function json(res, status, obj) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -81,82 +74,30 @@ function gate(req, res) {
 const acquire = (b) => { b.minute.push(Date.now()); b.jour.push(Date.now()); actifs++; };
 const release = () => { actifs--; };
 
-async function chat(req, res) {
-  const b = gate(req, res);
-  if (!b) return;
-
-  let body;
-  try { body = await readBody(req); } catch { return json(res, 400, { error: 'Requête invalide.' }); }
-  const message = typeof body.message === 'string' ? body.message.trim() : '';
-  if (!message || message.length > MAX_CHARS) return json(res, 400, { error: `Message vide ou > ${MAX_CHARS} caractères.` });
-  if (!UUID.test(body.sessionId || '')) return json(res, 400, { error: 'Session invalide.' });
-
-  acquire(b);
-
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream; charset=utf-8',
-    'Cache-Control': 'no-cache, no-transform',
-    'X-Accel-Buffering': 'no',
-  });
-  const send = (o) => res.write(`data: ${JSON.stringify(o)}\n\n`);
-
-  let child, fin = false;
-  const done = () => { if (!fin) { fin = true; actifs--; } };
-  res.on('close', () => { if (!fin && child) child.kill('SIGTERM'); });
-
-  // resume=true : reprend une conversation existante ; false : en crée une avec cet identifiant.
-  // Si l'état connu est faux (ex. le serveur a redémarré), on retente une fois dans l'autre mode.
-  function run(resume, canRetry) {
-    const args = ['-p',
-      '--tools', '',
-      '--setting-sources', '',
-      '--disable-slash-commands',
-      '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
-      '--system-prompt', systemPrompt()];
-    if (MODEL) args.push('--model', MODEL);
-    args.push(resume ? '--resume' : '--session-id', body.sessionId);
-
-    child = spawn(CLAUDE_BIN, args, { cwd: SANDBOX, stdio: ['pipe', 'pipe', 'pipe'] });
-    child.stdin.on('error', () => {});
-    child.stdin.end(message); // par stdin : un message commençant par "-" ne doit pas être pris pour une option
-    let buf = '', stderr = '', sent = false;
-
-    child.stdout.on('data', (d) => {
-      buf += d;
-      let i;
-      while ((i = buf.indexOf('\n')) >= 0) {
-        const line = buf.slice(0, i); buf = buf.slice(i + 1);
-        let ev; try { ev = JSON.parse(line); } catch { continue; }
-        const delta = ev.type === 'stream_event' && ev.event?.type === 'content_block_delta' && ev.event.delta?.type === 'text_delta' && ev.event.delta.text;
-        if (delta) { sent = true; send({ t: 'delta', text: delta }); }
-      }
-    });
-    child.stderr.on('data', (d) => { stderr += d; });
-    child.on('close', (code) => {
-      if (code === 0) { done(); sessions.add(body.sessionId); saveSessions(); send({ t: 'done' }); return res.end(); }
-      if (canRetry && !sent && !res.destroyed) {
-        if (!resume && /already in use/i.test(stderr)) { sessions.add(body.sessionId); saveSessions(); return run(true, false); }
-        if (resume && /no conversation|not found/i.test(stderr)) { sessions.delete(body.sessionId); saveSessions(); return run(false, false); }
-      }
-      done();
-      console.error('claude a échoué', code, stderr.slice(0, 500));
-      send({ t: 'error', message: 'Erreur côté serveur, réessaie.' });
-      res.end();
-    });
-    child.on('error', () => { done(); send({ t: 'error', message: 'claude introuvable sur le serveur.' }); res.end(); });
-  }
-  run(sessions.has(body.sessionId), true);
-}
-
-const candidature = require('./candidature')({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, release, json, readBody });
+const candidature = require('./candidature')({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, CLAUDE_TIMEOUT_MS, diag, auth, gate, acquire, release, json, readBody });
 
 const TYPES = { '.js': 'text/javascript; charset=utf-8', '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.svg': 'image/svg+xml', '.webmanifest': 'application/manifest+json' };
+const DEBUT = Date.now();
 
-http.createServer((req, res) => {
+const serveur = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (req.method === 'POST' && url.pathname === '/api/chat') return chat(req, res);
+  const t0 = Date.now();
+  if (url.pathname.startsWith('/api/')) res.on('finish', () => diag.log('REQ', `${req.method} ${url.pathname} ${res.statusCode} ${Date.now() - t0}ms`));
+
+  // sonde de santé pour lancer.sh : ne révèle rien (pas de code requis)
+  if (req.method === 'GET' && url.pathname === '/healthz') return json(res, 200, { ok: true, uptime: Math.round((Date.now() - DEBUT) / 1000), actifs });
+
   const route = candidature[req.method + ' ' + url.pathname];
-  if (route) return route(req, res, url);
+  if (route) {
+    Promise.resolve()
+      .then(() => route(req, res, url))
+      .catch((e) => {
+        diag.log('ERREUR', `${req.method} ${url.pathname} : ${(e && e.stack) || e}`);
+        if (!res.headersSent) json(res, 500, { error: 'Erreur côté serveur, réessaie.' });
+        else res.end();
+      });
+    return;
+  }
   if (req.method === 'GET' && url.pathname === '/api/ping') { if (auth(req, res)) json(res, 200, { ok: true }); return; }
   if (req.method !== 'GET') return json(res, 405, { error: 'Méthode non autorisée.' });
   const file = url.pathname === '/' ? 'index.html' : url.pathname.slice(1);
@@ -164,4 +105,14 @@ http.createServer((req, res) => {
   if (!full.startsWith(PUBLIC + path.sep) || !fs.existsSync(full) || !fs.statSync(full).isFile()) return json(res, 404, { error: 'Introuvable.' });
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(full)] || 'application/octet-stream' });
   fs.createReadStream(full).pipe(res);
-}).listen(PORT, () => console.log(`Mini chat sur http://localhost:${PORT}`));
+});
+
+serveur.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    diag.log('FATAL', `Le port ${PORT} est déjà utilisé (un ancien serveur tourne peut-être encore). Pour voir lequel : lsof -i :${PORT}`);
+    process.exit(2);
+  }
+  diag.log('FATAL', 'erreur du serveur HTTP : ' + ((e && e.stack) || e));
+  process.exit(1);
+});
+serveur.listen(PORT, () => diag.log('INFO', `Postuler démarré sur http://localhost:${PORT}`));

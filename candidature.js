@@ -10,7 +10,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
-module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, release, json, readBody }) => {
+module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, CLAUDE_TIMEOUT_MS, diag, auth, gate, acquire, release, json, readBody }) => {
   const DATA = path.join(ROOT, 'data', 'profils');
   fs.mkdirSync(DATA, { recursive: true });
 
@@ -173,8 +173,10 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
       const child = spawn(CLAUDE_BIN, args, { cwd: SANDBOX, stdio: ['pipe', 'pipe', 'pipe'] });
       child.stdin.on('error', () => {});
       child.stdin.end(message);
-      let buf = '', texte = '', stderr = '', fini = false;
-      const fin = (r) => { if (!fini) { fini = true; resolve(r); } };
+      let buf = '', texte = '', stderr = '', fini = false, expire = false;
+      // un appel qui ne répond plus ne doit pas bloquer la requête ni occuper une place indéfiniment
+      const minuteur = setTimeout(() => { expire = true; child.kill('SIGTERM'); setTimeout(() => child.kill('SIGKILL'), 5000).unref(); fin({ ok: false, texte, stderr, timeout: true }); }, CLAUDE_TIMEOUT_MS);
+      const fin = (r) => { clearTimeout(minuteur); if (!fini) { fini = true; resolve(r); } };
       res.on('close', () => { if (!fini) child.kill('SIGTERM'); });
       child.stdout.on('data', (d) => {
         buf += d;
@@ -187,9 +189,17 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
         }
       });
       child.stderr.on('data', (d) => { stderr += d; });
-      child.on('close', (code) => fin({ ok: code === 0, texte, stderr }));
-      child.on('error', () => fin({ ok: false, texte, stderr: 'claude introuvable' }));
+      child.on('close', (code) => fin({ ok: code === 0, texte, stderr, timeout: expire }));
+      child.on('error', () => fin({ ok: false, texte, stderr: 'claude introuvable', timeout: false }));
     });
+  }
+
+  // Échec d'un appel à claude : journal détaillé, alerte à l'administrateur si utile, message clair pour l'utilisateur
+  function echec(send, contexte, r) {
+    const d = diag.classer(r.stderr, r.timeout);
+    diag.log('ERREUR', `${contexte} : ${d.type}${r.stderr ? ' | ' + r.stderr.replace(/\s+/g, ' ').slice(0, 300) : ''}`);
+    if (d.alerte) diag.alerte(d.type, `${contexte} : ${r.stderr.replace(/\s+/g, ' ').slice(0, 200)}`);
+    send({ t: 'error', message: d.message });
   }
 
   function flux(res) {
@@ -288,7 +298,7 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
     const r = await appel({ message: texte, system: prompt('prompt-profil.md'), onDelta: (t) => send({ t: 'delta', text: t }), res });
     release();
     if (r.ok) send({ t: 'done' });
-    else { console.error('analyse profil a échoué', r.stderr.slice(0, 500)); send({ t: 'error', message: 'Erreur côté serveur, réessaie.' }); }
+    else { echec(send, 'analyse profil', r); }
     res.end();
   };
 
@@ -316,8 +326,7 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
     try {
       const r = await appel({ message: offre, system, onDelta: (t) => send({ t: 'delta', text: t }), res });
       if (!r.ok) {
-        console.error('candidature a échoué', r.stderr.slice(0, 500));
-        send({ t: 'error', message: 'Erreur côté serveur, réessaie.' });
+        echec(send, 'candidature', r);
         return;
       }
       const s = sections(r.texte);
@@ -371,7 +380,7 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
     try {
       const r = await appel({ message: (histo ? `CONVERSATION JUSQU'ICI :\n${histo}\n\n` : '') + `NOUVEAU MESSAGE DU CANDIDAT :\n${message}`, system, onDelta: (t) => send({ t: 'delta', text: t }), res });
       if (r.ok) send({ t: 'done' });
-      else { console.error('coach a échoué', r.stderr.slice(0, 500)); send({ t: 'error', message: 'Erreur côté serveur, réessaie.' }); }
+      else { echec(send, 'coach', r); }
     } finally {
       release();
       res.end();
@@ -406,8 +415,7 @@ module.exports = ({ ROOT, SANDBOX, CLAUDE_BIN, MODEL, auth, gate, acquire, relea
     try {
       const r = await appel({ message, system, onDelta: (t) => send({ t: 'delta', text: t }), res });
       if (!r.ok || !r.texte.trim()) {
-        console.error('retouche a échoué', r.stderr.slice(0, 500));
-        send({ t: 'error', message: 'Erreur côté serveur, réessaie.' });
+        echec(send, 'retouche', r);
         return;
       }
       const nouveau = await finitions(r.texte.trim(), cible, p.prefs, res);
