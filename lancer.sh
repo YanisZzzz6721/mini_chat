@@ -99,13 +99,23 @@ APPLESCRIPT
     rm -f "$fichier"; return 1
   fi
   pass=${SMTP_PASS//\\/\\\\}; pass=${pass//\"/\\\"}
+  local err
   # identifiants passés par stdin : ils n'apparaissent pas dans la liste des processus
-  if printf 'user = "%s:%s"\n' "$SMTP_USER" "$pass" | curl -sS --max-time 40 -K - \
+  if err=$(printf 'user = "%s:%s"\n' "$SMTP_USER" "$pass" | curl -sS --max-time 40 -K - \
       --url "${SMTP_URL:-smtps://smtp.gmail.com:465}" --ssl-reqd \
-      --mail-from "${MAIL_FROM:-$SMTP_USER}" --mail-rcpt "$to" -T "$fichier" 2>>"$LOG"; then
+      --mail-from "${MAIL_FROM:-$SMTP_USER}" --mail-rcpt "$to" -T "$fichier" 2>&1); then
     log MAIL "envoyé à $to : $sujet"; rm -f "$fichier"; return 0
   fi
-  log ERREUR "échec d'envoi de l'e-mail à $to (« $sujet ») : voir les lignes ci-dessus (mot de passe d'application ? serveur SMTP ?)"
+  err=${err//"$SMTP_PASS"/***}; err=${err//$'\n'/ | }
+  log ERREUR "échec d'envoi à $to (« $sujet »). Réponse du serveur : ${err:-aucune}"
+  case "$err" in
+    *535*|*"not accepted"*|*534*|*"pplication-specific"*|*"Invalid credentials"*|*"LOGIN denied"*|*"Authentication"*|*"authentication"*)
+      log ERREUR "→ Le serveur refuse l'identifiant. Causes habituelles : mot de passe d'application mal recopié (relance ./lancer.sh --config et recolle-le), validation en 2 étapes non activée sur ${SMTP_USER}, ou mot de passe NORMAL utilisé à la place d'un mot de passe d'application." ;;
+    *"resolve host"*|*"timed out"*|*"Failed to connect"*|*"Connection refused"*|*"Could not connect"*)
+      log ERREUR "→ Le Mac n'arrive pas à joindre le serveur de mail (${SMTP_URL:-smtps://smtp.gmail.com:465}) : vérifie la connexion Internet ou un pare-feu." ;;
+    *"Sender address rejected"*|*"553"*|*"550"*|*"554"*)
+      log ERREUR "→ Le serveur refuse l'expéditeur ou le destinataire : vérifie les deux adresses (fautes de frappe ?)." ;;
+  esac
   rm -f "$fichier"; return 1
 }
 
@@ -245,6 +255,14 @@ assistant_config() {
 }
 
 if [ "${1:-}" = "--config" ]; then assistant_config; exit $?; fi
+if [ "${1:-}" = "--test" ]; then
+  dest="${MAIL_TO_USER:-${MAIL_TO_ADMIN:-}}"
+  [ -n "$dest" ] || { echo "Aucun destinataire réglé : lance ./lancer.sh --config"; exit 1; }
+  echo "Envoi d'un mail de test à $dest…"
+  if envoyer_mail "$dest" "Postuler : test d'envoi" "Si tu lis ce message, l'envoi automatique des liens fonctionne."; then
+    echo "OK : mail envoyé. Vérifie la boîte de $dest (et les courriers indésirables)."; exit 0
+  else echo "Échec : lis les lignes [ERREUR] ci-dessus."; exit 1; fi
+fi
 
 # ---------------------------------------------------------------- vérifications avant démarrage
 avec_delai() { # secondes commande... (perl existe sur macOS comme sur Linux)

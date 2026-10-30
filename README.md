@@ -40,6 +40,7 @@ Le terminal affiche un cadre **LIEN À ENVOYER**. `Ctrl+C` coupe tout.
 - `MAIL_TO_USER` : reçoit **le lien** à chaque nouveau lien (« NOUVEAU lien, l'ancien ne marche plus ») et un mail « service rétabli » avec le lien après un plantage du serveur, sans détail technique et **jamais le code d'accès**. Plafonné à 6 mails par heure si ça boucle.
 - `MAIL_TO_ADMIN` : reçoit les alertes techniques avec un diagnostic complet (état, versions, dernières lignes des journaux) : nouveau lien, tunnel relancé, tunnel instable, serveur en panne, Claude déconnecté ou limite atteinte, échec au démarrage. Un délai anti-spam évite les doublons.
 - L'envoi passe par SMTP avec un compte à toi (par exemple Gmail avec un « mot de passe d'application »). Les identifiants restent dans `.env.local` et ne sont pas visibles dans la liste des processus.
+- Pour renvoyer un mail de test sans reconfigurer : `./lancer.sh --test` (affiche l'erreur exacte du serveur de mail et la cause probable en cas d'échec).
 - Pour tester sans rien envoyer : `MAIL_DRY_RUN=1 ./lancer.sh` écrit les mails dans `logs/mails-test.txt`.
 
 Le lien Cloudflare gratuit change à chaque recréation : c'est pour ça que le nouveau lien part automatiquement par e-mail. Pour un lien fixe, il faut un tunnel nommé (compte Cloudflare gratuit + nom de domaine). Laisse le Mac branché et éveillé : `lancer.sh` empêche la veille tant qu'il tourne, mais pas la fermeture du capot.
